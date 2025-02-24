@@ -1,6 +1,7 @@
 import json
 from typing import Any, Dict, List, Optional, Union
 from .models import *
+from .file_parser import FileParser
 import click
 
 
@@ -13,8 +14,7 @@ class OpenAPIParser:
         """
         Initialize the parser by loading the OpenAPI specification.
         """
-        with open(openapi_path, "r") as f:
-            self.openapi_spec = json.load(f)
+        self.openapi_spec = FileParser.parse_file(openapi_path)
         self.paths = self.openapi_spec.get("paths", {})
         self.components = self.openapi_spec.get("components", {}).get("schemas", {})
         self.tag = tag
