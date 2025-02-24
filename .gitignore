@@ -1,5 +1,6 @@
 **/.DS_Store
-borea.config.json
+*borea.config.json
+!*example*.json
 generated_sdk
 
 # Byte-compiled / optimized / DLL files
