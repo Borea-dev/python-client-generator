@@ -7,6 +7,8 @@ import click
 import black
 from jinja2 import Environment, FileSystemLoader
 
+from ..content_loader import ContentLoader
+
 from .models.borea_config_models import BoreaConfig
 from .config_parser import ConfigParser
 
@@ -488,12 +490,6 @@ class SDKGenerator:
         # Create output directories
         self.file_writer.create_directory(str(self.output_dir) or sdk_class_filename)
 
-        # TODO: file or url, cp or download and output to openapi_file
-        openapi_file = self.output_dir / "openapi.json"
-        self.file_writer.write(
-            str(openapi_file), json.dumps(self.metadata.openapi, indent=2)
-        )
-
         # Generate models
         openapi_input = self.metadata.openapi_input
         models_filename = "models"
@@ -607,6 +603,12 @@ class SDKGenerator:
         readme_path = self.output_dir / "README.md"
         # readme_content = self._generate_readme(operations_by_tag)
         # self.file_writer.write(str(readme_path), readme_content)
+
+        # Load openapi.json
+        openapi_file = self.output_dir / "openapi.json"
+        content_loader = ContentLoader()
+        openapi_content = content_loader.load_json(self.metadata.openapi_input)
+        self.file_writer.write(str(openapi_file), json.dumps(openapi_content, indent=2))
 
 
 def load_config(config_path: str = "borea.config.json") -> Dict[str, Any]:
