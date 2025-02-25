@@ -81,6 +81,7 @@ class Component(BaseModel):
 class OpenAPIMetadata(BaseModel):
     """Represents the parsed OpenAPI metadata"""
 
+    openapi_input: str
     openapi: str
     info: Info
     servers: List[Server]
@@ -88,4 +89,3 @@ class OpenAPIMetadata(BaseModel):
     tags: List[OpenAPITag]
     operations: List[Operation]
     headers: List[HttpHeader]
-    source_file: str = ""  # Path to the source OpenAPI file

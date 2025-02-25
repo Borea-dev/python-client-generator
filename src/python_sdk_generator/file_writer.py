@@ -108,14 +108,15 @@ class ConfigurableFileWriter:
         return True
 
     def generate_python_models(
-        self, models_dir: str, models_file_path: str, openapi_path: str
+        self, models_dir: str, models_file_path: str, openapi_input: str
     ) -> bool:
         """
         Generate Python models using datamodel-codegen.
 
         Args:
             models_dir: Directory where models should be generated
-            openapi_path: Path to the OpenAPI spec file
+            models_file_path: Path to the generated models file
+            openapi_input: Path or URL to the OpenAPI spec
 
         Returns:
             bool: True if models were generated, False if ignored
@@ -139,7 +140,7 @@ class ConfigurableFileWriter:
             "--input-file-type",
             "openapi",
             "--input",
-            str(openapi_path),
+            str(openapi_input),
             "--output",
             str(models_path),
             "--use-standard-collections",
@@ -157,6 +158,11 @@ class ConfigurableFileWriter:
             "pydantic_v2.BaseModel",
             "--disable-timestamp",
         ]
+
+        # Add --url flag if input is a URL
+        if openapi_input.startswith(("http://", "https://")):
+            cmd.extend(["--url", str(openapi_input)])
+
         try:
             subprocess.run(cmd, check=True)
             return True

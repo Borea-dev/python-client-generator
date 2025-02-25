@@ -1,18 +1,38 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
 
-class GeneratorConfig(BaseModel):
-    """Configuration for the generator itself."""
+class InputConfigJSON(BaseModel):
+    """Configuration for input sources. JSON version."""
 
-    input: str = ""
-    sdkOutput: str = ""
-    modelsOutput: str = ""
+    openapi: List[str] = Field(default_factory=list)
+
+
+class InputConfig(BaseModel):
+    """Configuration for input sources. Parsed version"""
+
+    openapi: Optional[str] = None
+
+
+class OutputConfig(BaseModel):
+    """Configuration for output locations."""
+
+    clientSDK: Optional[str] = None
+    models: Optional[str] = None
     tests: bool = False
+
+
+class BoreaConfigJSON(BaseModel):
+    """Configuration for the Borea SDK generator. JSON version."""
+
+    input: InputConfigJSON = Field(default_factory=InputConfigJSON)
+    output: OutputConfig = Field(default_factory=OutputConfig)
+    ignores: List[str] = Field(default_factory=list)
 
 
 class BoreaConfig(BaseModel):
     """Configuration for the Borea SDK generator."""
 
-    generator: GeneratorConfig = Field(default_factory=GeneratorConfig)
+    input: InputConfig = Field(default_factory=InputConfig)
+    output: OutputConfig = Field(default_factory=OutputConfig)
     ignores: List[str] = Field(default_factory=list)

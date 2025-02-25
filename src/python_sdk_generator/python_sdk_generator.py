@@ -7,7 +7,8 @@ import click
 import black
 from jinja2 import Environment, FileSystemLoader
 
-from ..models.borea_config_models import GeneratorConfig, BoreaConfig
+from .models.borea_config_models import BoreaConfig
+from .config_parser import ConfigParser
 
 from .models.schema_model import SchemaPyJinja
 from .models.sdk_class_models import (
@@ -479,25 +480,28 @@ class SDKGenerator:
 
     def generate(self) -> None:
         """Generate the SDK."""
+        # Shared SDK class / file vars
         file_ext = ".py"
+        parent_class_name = self._clean_capitalize(self.metadata.info.title)
+        sdk_class_filename = self._clean_file_name(self.metadata.info.title)
 
         # Create output directories
-        self.file_writer.create_directory(str(self.output_dir))
+        self.file_writer.create_directory(str(self.output_dir) or sdk_class_filename)
 
-        # Write the complete spec
+        # TODO: file or url, cp or download and output to openapi_file
         openapi_file = self.output_dir / "openapi.json"
         self.file_writer.write(
             str(openapi_file), json.dumps(self.metadata.openapi, indent=2)
         )
 
         # Generate models
-        openapi_path = str(Path(self.metadata.source_file))
+        openapi_input = self.metadata.openapi_input
         models_filename = "models"
         models_file_path = models_filename + file_ext
         self.file_writer.generate_python_models(
             models_dir=str(self.models_dir),
             models_file_path=models_file_path,
-            openapi_path=openapi_path,
+            openapi_input=openapi_input,
         )
 
         # Generate schema files
@@ -511,10 +515,6 @@ class SDKGenerator:
         test_dir = self.output_dir / "tests"
         if self.generate_tests:
             self.file_writer.create_directory(str(test_dir))
-
-        # Shared SDK class / file vars
-        parent_class_name = self._clean_capitalize(self.metadata.info.title)
-        sdk_class_filename = self._clean_file_name(self.metadata.info.title)
 
         # Generate handlers (tag/<operation_id>/<operation_id>.py)
         operation_metadata_by_tag: Dict[str, List[OperationMetadata]] = {}
@@ -618,70 +618,71 @@ def load_config(config_path: str = "borea.config.json") -> Dict[str, Any]:
         return {}
 
 
-default_models_dir = "models"
-
-
 @click.command()
 @click.option(
-    "--input",
-    "input_file",
-    required=False,
-    type=click.Path(exists=True),
-    help="OpenAPI specification file (JSON or YAML)",
+    "--openapi-input",
+    "-i",
+    help="Path to OpenAPI specification file or URL",
+    type=str,
 )
 @click.option(
     "--sdk-output",
     "-o",
-    required=False,
-    type=click.Path(),
     help="Output directory for the generated SDK",
+    type=str,
 )
 @click.option(
     "--models-output",
-    required=False,
-    type=click.Path(),
-    help=f"Output directory for generated models (default: <sdk-output>/{default_models_dir})",
+    "-m",
+    help="Output directory for the generated models",
+    type=str,
 )
 @click.option(
-    "--tests", required=False, type=bool, help="Generate tests (default: False)"
+    "--tests",
+    "-t",
+    help="Generate tests",
+    default=None,
 )
 @click.option(
-    "--config", default="borea.config.json", type=str, help="Path to borea.config.json"
+    "--config",
+    "-c",
+    help="Path to borea.config.json",
+    type=str,
 )
 def main(
-    input_file: Optional[str],
+    openapi_input: Optional[str],
     sdk_output: Optional[str],
     models_output: Optional[str],
     tests: Optional[bool],
     config: Optional[str],
 ):
-    """Generate a Python SDK from an OpenAPI specification."""
-    # Load borea config values
-    borea_config = load_config(config) if config else {}
-    generator_config = borea_config.get("generator", {})
-    ignores = borea_config.get("ignores", [])
+    """Generate a Python SDK from an OpenAPI specification.
 
-    borea_config = BoreaConfig(
-        generator=GeneratorConfig(**generator_config),
-        ignores=ignores,
-    )
-
+    The OpenAPI specification can be provided as a local file path or a URL.
+    For URLs, both JSON and YAML formats are supported.
+    """
+    # Default values
+    default_config = "borea.config.json"
     default_input = "openapi.json"
     default_sdk_output = "generated_sdk"
+    default_models_dir = "models"
     default_tests = False
 
-    # Use Click options if provided, otherwise fall back to config values
-    openapi_input_path = input_file or borea_config.generator.input or default_input
+    # Load borea config
+    borea_config: BoreaConfig = ConfigParser.from_source(config, default_config)
+
+    # Use defaults if CLI args OR config values are not provided
+    openapi_input = openapi_input or borea_config.input.openapi or default_input
     sdk_output_path = Path(
-        sdk_output or borea_config.generator.sdkOutput or default_sdk_output
+        sdk_output or borea_config.output.clientSDK or default_sdk_output
     )
     models_output_path = Path(
         sdk_output_path
-        / (models_output or borea_config.generator.modelsOutput or default_models_dir)
+        / (models_output or borea_config.output.models or default_models_dir)
     )
-    tests = tests or borea_config.generator.tests or default_tests
+    tests = tests or borea_config.output.tests or default_tests
 
-    parser = OpenAPIParser(openapi_input_path)
+    parser = OpenAPIParser(openapi_input)
     metadata = parser.parse()
 
     generator = SDKGenerator(
