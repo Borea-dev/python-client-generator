@@ -6,7 +6,7 @@
 		"clientSDK": "generated_sdk",
 		"models": "models",
 		"tests": false,
-		"xCodeSamples": true
+		"xCodeSamples": false
 	},
 	"ignores": []
 }

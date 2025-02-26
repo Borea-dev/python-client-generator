@@ -109,7 +109,9 @@ class ConfigParser:
     @staticmethod
     def log_warning_default_config_not_found() -> None:
         """Log a warning message when the default config is not found."""
-        click.echo("Warning: No default config found.")
+        click.echo(
+            "Warning: No borea.config.json found. Command line arguments or defaults will be used."
+        )
 
     @classmethod
     def load_config_from_source(

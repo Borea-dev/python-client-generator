@@ -702,6 +702,7 @@ def main(
     # Default values
     default_config = "borea.config.json"
     default_input = "openapi.json"
+    # default_sdk_output is defined below
     default_models_dir = "models"
     default_tests = False
     default_x_code_samples = False

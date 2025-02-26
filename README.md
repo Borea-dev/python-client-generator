@@ -88,7 +88,7 @@ The generator will create the Python HTTP client SDK based on the OpenAPI specif
 
 Command line arguments take precedence over settings in `borea.config.json`.
 
-The project uses `borea.config.json` for configuration settings. Example config with `defaults`:
+The project uses `borea.config.json` for configuration settings. Example config with the `defaults`:
 
 ```json
 {
@@ -96,10 +96,10 @@ The project uses `borea.config.json` for configuration settings. Example config 
 		"openapi": ["openapi.json"]
 	},
 	"output": {
-		"clientSDK": "generated_sdk",
+		"clientSDK": "Formatted OpenAPI Title by default",
 		"models": "models",
 		"tests": false,
-		"xCodeSamples": true
+		"xCodeSamples": false
 	},
 	"ignores": []
 }
