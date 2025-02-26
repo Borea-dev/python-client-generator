@@ -1,6 +1,7 @@
 **/.DS_Store
-.tmp
-.ignore
+*borea.config.json
+!*example*.json
+generated_sdk
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

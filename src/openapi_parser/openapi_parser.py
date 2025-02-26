@@ -1,7 +1,10 @@
 import json
 from typing import Any, Dict, List, Optional, Union
-from .models import *
+
 import click
+
+from ..content_loader import ContentLoader
+from .models import *
 
 
 class OpenAPIParser:
@@ -9,17 +12,17 @@ class OpenAPIParser:
     A parser to extract relevant API operation details from an OpenAPI specification.
     """
 
-    def __init__(self, openapi_path: str, tag: str = "", operation_id: str = ""):
+    def __init__(self, openapi_input: str, tag: str = "", operation_id: str = ""):
         """
         Initialize the parser by loading the OpenAPI specification.
         """
-        with open(openapi_path, "r") as f:
-            self.openapi_spec = json.load(f)
+        content_loader = ContentLoader()
+        self.openapi_spec = content_loader.load_structured_data(str(openapi_input))
         self.paths = self.openapi_spec.get("paths", {})
         self.components = self.openapi_spec.get("components", {}).get("schemas", {})
         self.tag = tag
         self.operation_id = operation_id
-        self.openapi_path = openapi_path
+        self.openapi_input = openapi_input
 
     def parse(self) -> OpenAPIMetadata:
         """
@@ -54,6 +57,7 @@ class OpenAPIParser:
         tags = self.openapi_spec.get("tags", [])
         components = self.openapi_spec.get("components", {})
         return OpenAPIMetadata(
+            openapi_input=self.openapi_input,
             openapi=openapi,
             info=info,
             servers=servers,
@@ -61,7 +65,6 @@ class OpenAPIParser:
             tags=tags,
             headers=headers,
             operations=operations,
-            source_file=self.openapi_path,
         )
 
     def _add_unique_http_param(
@@ -270,7 +273,7 @@ class OpenAPIParser:
 def main(input_file, tag, operation_id):
     parser = OpenAPIParser(input_file, tag=tag, operation_id=operation_id)
     operations = parser.parse()
-    print("Path Operations:", json.dumps(operations.model_dump(), indent=2))
+    click.echo("Path Operations:", json.dumps(operations.model_dump(), indent=2))
 
 
 if __name__ == "__main__":

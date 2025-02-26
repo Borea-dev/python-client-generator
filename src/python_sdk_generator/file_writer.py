@@ -9,31 +9,14 @@ import click
 class ConfigurableFileWriter:
     """A file writer that respects ignore patterns specified in a config file."""
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, ignores: List[str] = None):
         """
-        Initialize the file writer with an optional config path.
-        If no config path is provided, it will look for borea.config.json in the current directory.
-        """
-        self.config_path = (
-            Path(config_path) if config_path else Path("borea.config.json")
-        )
-        self.ignore_patterns: List[str] = []
-        self._load_config()
+        Initialize the file writer with ignore patterns.
 
-    def _load_config(self) -> None:
-        """Load the configuration file and extract ignore patterns."""
-        try:
-            with open(self.config_path) as f:
-                config = json.load(f)
-                self.ignore_patterns = config.get("ignores", [])
-        except FileNotFoundError:
-            click.echo(
-                f"Warning: Config file {self.config_path} not found. No ignore patterns will be applied."
-            )
-            self.ignore_patterns = []
-        except json.JSONDecodeError:
-            click.echo(f"Error: Config file {self.config_path} is not valid JSON.")
-            raise
+        Args:
+            ignores: List of ignore patterns
+        """
+        self.ignore_patterns: List[str] = ignores or []
 
     def should_ignore(self, path: str) -> bool:
         """
@@ -108,14 +91,15 @@ class ConfigurableFileWriter:
         return True
 
     def generate_python_models(
-        self, models_dir: str, models_file_path: str, openapi_path: str
+        self, models_dir: str, models_file_path: str, openapi_input: str
     ) -> bool:
         """
         Generate Python models using datamodel-codegen.
 
         Args:
             models_dir: Directory where models should be generated
-            openapi_path: Path to the OpenAPI spec file
+            models_file_path: Path to the generated models file
+            openapi_input: Path or URL to the OpenAPI spec
 
         Returns:
             bool: True if models were generated, False if ignored
@@ -139,7 +123,7 @@ class ConfigurableFileWriter:
             "--input-file-type",
             "openapi",
             "--input",
-            str(openapi_path),
+            str(openapi_input),
             "--output",
             str(models_path),
             "--use-standard-collections",
@@ -157,6 +141,11 @@ class ConfigurableFileWriter:
             "pydantic_v2.BaseModel",
             "--disable-timestamp",
         ]
+
+        # Add --url flag if input is a URL
+        if openapi_input.startswith(("http://", "https://")):
+            cmd.extend(["--url", str(openapi_input)])
+
         try:
             subprocess.run(cmd, check=True)
             return True

@@ -1,6 +1,8 @@
-# Borea Python Client Generator
+# Borea Python HTTP Client SDK Generator
 
-This repository contains a Python SDK generator. It generates a Python client library from an OpenAPI specification.
+Please learn more about Borea and our mission at [borea.dev](https://borea.dev) and our organization on GitHub [Borea-dev](https://github.com/Borea-dev).
+
+This repository contains a Python HTTP client SDK generator. It generates a Python client from an OpenAPI specification.
 
 ## Setup
 
@@ -13,8 +15,10 @@ This repository contains a Python SDK generator. It generates a Python client li
 
 Run the automated setup script:
 
+_`source` is required to activate the virtual environment_
+
 ```bash
-./setup.sh
+source ./setup.sh
 ```
 
 This script will:
@@ -26,7 +30,7 @@ This script will:
 Available options:
 
 ```bash
-./setup.sh [OPTIONS]
+setup.sh [OPTIONS]
 
 Options:
   -r, --recreate    Recreate virtual environment (deletes existing .venv)
@@ -68,15 +72,46 @@ pip install -r src/requirements.txt
 
 ### Running the Python SDK Generator
 
-1. Ensure you have a valid OpenAPI specification file (`openapi.json`) in the root directory or provide the path via the `--input` option or in the `generator.input` setting in `borea.config.json`.
+1. Ensure you have a valid OpenAPI specification file (`openapi.json`) in the root directory. Command line arguments and configuration are detailed below.
 
-2. Run the SDK generator:
+2. Run the SDK generator after configuration:
 
 ```bash
 python -m src.python_sdk_generator.python_sdk_generator
 ```
 
-3. Show this help message with `--help`:
+The generator will create the Python HTTP client SDK based on the OpenAPI specification.
+
+### Configuration
+
+**IMPORTANT!**
+
+Command line arguments take precedence over settings in `borea.config.json`.
+
+The project uses `borea.config.json` for configuration settings. Example config with the `defaults`:
+
+```json
+{
+	"input": {
+		"openapi": ["openapi.json"]
+	},
+	"output": {
+		"clientSDK": "Formatted OpenAPI Title by default",
+		"models": "models",
+		"tests": false,
+		"xCodeSamples": false
+	},
+	"ignores": []
+}
+```
+
+-   `input`: map input options to array of values, ordered by precedence. For example, first value is a file path and the second is a URL. If the file cannot be found, then the URL will be used.
+-   `output`: map output options to values
+-   `ignore`: array of `glob` patterns to ignore. No file or directory matching the pattern will be created.
+
+### Command line help
+
+Show this help message with `--help`:
 
 ```bash
 Usage: python -m src.python_sdk_generator.python_sdk_generator
@@ -84,37 +119,18 @@ Usage: python -m src.python_sdk_generator.python_sdk_generator
 
   Generate a Python SDK from an OpenAPI specification.
 
+  The OpenAPI specification can be provided as a local file path or a URL. For
+  URLs, both JSON and YAML formats are supported.
+
 Options:
-  --input PATH           OpenAPI specification file (JSON or YAML)
-  -o, --sdk-output PATH  Output directory for the generated SDK
-  --models-output PATH   Output directory for generated models (default: <sdk-output>/models)
-  --tests BOOLEAN        Generate tests (default: False)
-  --config TEXT          Path to borea.config.json
-  --help                 Show this message and exit.
+  -i, --openapi-input TEXT   Path to OpenAPI specification file or URL
+  -o, --sdk-output TEXT      Output directory for the generated SDK
+  -m, --models-output TEXT   Output directory for the generated models
+  -t, --tests TEXT           Generate tests
+  -x, --x-code-samples TEXT  Generate x-code-samples
+  -c, --config TEXT          Path to borea.config.json
+  --help                     Show this message and exit.
 ```
-
-The generator will create the Python client library based on the OpenAPI specification.
-
-### Configuration
-
-The project uses `borea.config.json` for configuration settings. The default configuration includes:
-
-```json
-{
-	"generator": {
-		"input": "openapi.json",
-		"sdkOutput": "generated_sdk",
-		"modelsOutput": "models",
-		"tests": false
-	},
-	"ignores": []
-}
-```
-
-You can modify this file to add specific patterns or files to ignore during the generation process.
-Any file or folders matching a glob pattern will not be created or overwritten.
-
-You can also include the generation parameters.
 
 ## Running Tests
 

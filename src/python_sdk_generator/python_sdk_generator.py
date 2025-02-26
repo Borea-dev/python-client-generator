@@ -7,7 +7,20 @@ import click
 import black
 from jinja2 import Environment, FileSystemLoader
 
-from ..models.borea_config_models import GeneratorConfig, BoreaConfig
+from ..content_loader import ContentLoader
+
+from ..openapi_parser.openapi_parser import OpenAPIParser
+from ..openapi_parser.models import (
+    HttpParameter,
+    OpenAPIMetadata,
+    Operation,
+    SchemaMetadata,
+)
+
+from .config_parser import ConfigParser
+from .file_writer import ConfigurableFileWriter
+from .x_code_sample_generator import XCodeSampleGenerator
+from .models.borea_config_models import BoreaConfig
 
 from .models.schema_model import SchemaPyJinja
 from .models.sdk_class_models import (
@@ -20,14 +33,6 @@ from .models.handler_class_models import (
     HandlerClassPyJinja,
     MethodParameter,
 )
-from .file_writer import ConfigurableFileWriter
-from ..openapi_parser.openapi_parser import OpenAPIParser
-from ..openapi_parser.models import (
-    HttpParameter,
-    OpenAPIMetadata,
-    Operation,
-    SchemaMetadata,
-)
 
 
 class SDKGenerator:
@@ -36,34 +41,40 @@ class SDKGenerator:
         metadata: OpenAPIMetadata,
         output_dir: Path,
         models_dir: Path,
-        generate_tests: bool = True,
-        config_path: Optional[str] = None,
+        generate_tests: bool,
+        generate_x_code_samples: bool,
+        borea_config: BoreaConfig,
     ):
         self.metadata = metadata
         self.output_dir = output_dir
         self.models_dir = models_dir
         self.generate_tests = generate_tests
+        self.generate_x_code_samples = generate_x_code_samples
         self.template_dir = Path(__file__).parent / "templates"
         self.env = Environment(loader=FileSystemLoader(str(self.template_dir)))
-        self.file_writer = ConfigurableFileWriter(config_path)
+        self.file_writer = ConfigurableFileWriter(ignores=borea_config.ignores)
 
-    def _clean_lower(self, tag: str) -> str:
+    @classmethod
+    def _clean_lower(cls, tag: str) -> str:
         """Clean tag name to be a valid Python identifier"""
-        return self._sanitize_string(tag).lower().replace(" ", "_").replace("-", "_")
+        return cls._sanitize_string(tag).lower().replace(" ", "_").replace("-", "_")
 
-    def _clean_capitalize(self, name: str) -> str:
+    @classmethod
+    def _clean_capitalize(cls, name: str) -> str:
         """Clean name to be a valid Python identifier"""
         # Remove spaces and dashes, convert to camel case
-        name = self._sanitize_string(name)
+        name = cls._sanitize_string(name)
         words = name.split("_")
         return "".join(word if word.isupper() else word.capitalize() for word in words)
 
-    def _clean_parameter_name(self, name: str) -> str:
+    @classmethod
+    def _clean_parameter_name(cls, name: str) -> str:
         """Clean parameter name to be a valid Python identifier"""
         # Convert hyphens to underscores
-        return self._sanitize_string(name).replace("-", "_").replace(" ", "_").lower()
+        return cls._sanitize_string(name).replace("-", "_").replace(" ", "_").lower()
 
-    def _clean_type_name(self, type_name: str) -> str:
+    @classmethod
+    def _clean_type_name(cls, type_name: str) -> str:
         """Clean type name to be a valid Python type"""
         if "int" in type_name:
             return "int"
@@ -77,26 +88,31 @@ class SDKGenerator:
         }
         return type_map.get(type_name.lower(), type_name)
 
-    def _clean_file_name(self, name: str) -> str:
+    @classmethod
+    def _clean_file_name(cls, name: str) -> str:
         """Clean name to be a valid file name"""
         # Convert to snake case
         name = name.replace("-", " ")
         words = name.split()
         return "_".join(word.lower() for word in words)
 
-    def _clean_schema_name(self, name: str) -> str:
+    @classmethod
+    def _clean_schema_name(cls, name: str) -> str:
         """Clean name to be a valid Python identifier"""
         return name.replace("-", "_").replace(" ", "_")
 
-    def _replace_dashes_with_underscores(self, name: str) -> str:
+    @classmethod
+    def _replace_dashes_with_underscores(cls, name: str) -> str:
         """Replace dashes with underscores"""
         return name.replace("-", "_")
 
-    def _replace_spaces_with_underscores(self, name: str) -> str:
+    @classmethod
+    def _replace_spaces_with_underscores(cls, name: str) -> str:
         """Replace spaces with underscores"""
         return name.replace(" ", "_")
 
-    def _format_description(self, description: str) -> str:
+    @classmethod
+    def _format_description(cls, description: str) -> str:
         """Format description to be a valid Python docstring"""
         return (
             description.replace("\\t", "")
@@ -105,13 +121,15 @@ class SDKGenerator:
             .replace('"', "'")
         )
 
-    def _sanitize_string(self, s: str) -> str:
+    @classmethod
+    def _sanitize_string(cls, s: str) -> str:
         # Replace common delimiters with underscore
         s = re.sub(r"[-/.,|:; ]", "_", s)
         # Remove all other special characters (keeping alphanumerics and underscores)
         s = re.sub(r"[^\w]", "", s)
         return s
 
+    @classmethod
     def _get_tag_formats(self, tag: str) -> Tuple[str, str, str]:
         tag_dir = self._clean_lower(tag)
         tag_class_name = self._clean_capitalize(tag)
@@ -423,29 +441,6 @@ class SDKGenerator:
             format_with_black=False,
         )
 
-    def _render_template_and_format_code(
-        self,
-        template_name: str,
-        template_metadata: Dict[str, Any],
-        format_with_black: bool = True,
-    ) -> str:
-        template = self.env.get_template(template_name)
-        try:
-            rendered_code = template.render(template_metadata)
-        except Exception as e:
-            click.echo(template_metadata)
-            raise e
-
-        if format_with_black:
-            try:
-                formatted_code = black.format_str(rendered_code, mode=black.Mode())
-            except Exception as e:
-                click.echo(rendered_code)
-                raise e
-            return formatted_code
-        else:
-            return rendered_code
-
     def _generate_tests(self, tag: str, operations: List[Operation]) -> str:
         """Generate tests for a specific tag"""
         template = self.env.get_template("test_client.py.jinja")
@@ -471,6 +466,48 @@ class SDKGenerator:
             format_with_black=False,
         )
 
+    def _generate_x_code_samples(
+        self, handler_file_paths_by_operation_id: Dict[str, str], file_ext: str
+    ) -> None:
+        # Load OpenAPI content
+        openapi_file = self.output_dir / "openapi.json"
+        content_loader = ContentLoader()
+        openapi_content = content_loader.load_json(self.metadata.openapi_input)
+
+        # Add code samples to OpenAPI content
+        code_sample_generator = XCodeSampleGenerator(
+            openapi_content=openapi_content,
+            handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
+            file_ext=file_ext,
+        )
+        openapi_content = code_sample_generator.add_code_samples()
+
+        # Write OpenAPI content to file
+        self.file_writer.write(str(openapi_file), json.dumps(openapi_content, indent=2))
+
+    def _render_template_and_format_code(
+        self,
+        template_name: str,
+        template_metadata: Dict[str, Any],
+        format_with_black: bool = True,
+    ) -> str:
+        template = self.env.get_template(template_name)
+        try:
+            rendered_code = template.render(template_metadata)
+        except Exception as e:
+            click.echo(template_metadata)
+            raise e
+
+        if format_with_black:
+            try:
+                formatted_code = black.format_str(rendered_code, mode=black.Mode())
+            except Exception as e:
+                click.echo(rendered_code)
+                raise e
+            return formatted_code
+        else:
+            return rendered_code
+
     def _get_tag_description(self, tag: str) -> Union[str, None]:
         for t in self.metadata.tags:
             if t == tag:
@@ -479,25 +516,22 @@ class SDKGenerator:
 
     def generate(self) -> None:
         """Generate the SDK."""
+        # Shared SDK class / file vars
         file_ext = ".py"
+        parent_class_name = self._clean_capitalize(self.metadata.info.title)
+        sdk_class_filename = self._clean_file_name(self.metadata.info.title)
 
         # Create output directories
-        self.file_writer.create_directory(str(self.output_dir))
-
-        # Write the complete spec
-        openapi_file = self.output_dir / "openapi.json"
-        self.file_writer.write(
-            str(openapi_file), json.dumps(self.metadata.openapi, indent=2)
-        )
+        self.file_writer.create_directory(str(self.output_dir) or sdk_class_filename)
 
         # Generate models
-        openapi_path = str(Path(self.metadata.source_file))
+        openapi_input = self.metadata.openapi_input
         models_filename = "models"
         models_file_path = models_filename + file_ext
         self.file_writer.generate_python_models(
             models_dir=str(self.models_dir),
             models_file_path=models_file_path,
-            openapi_path=openapi_path,
+            openapi_input=openapi_input,
         )
 
         # Generate schema files
@@ -512,17 +546,15 @@ class SDKGenerator:
         if self.generate_tests:
             self.file_writer.create_directory(str(test_dir))
 
-        # Shared SDK class / file vars
-        parent_class_name = self._clean_capitalize(self.metadata.info.title)
-        sdk_class_filename = self._clean_file_name(self.metadata.info.title)
-
         # Generate handlers (tag/<operation_id>/<operation_id>.py)
+        handler_file_paths_by_operation_id: Dict[str, str] = {}
         operation_metadata_by_tag: Dict[str, List[OperationMetadata]] = {}
         for op in self.metadata.operations:
+            operation_id = op.operation_id
             tag_name = op.tag
             tag_dir, tag_class_name, tag_filename = self._get_tag_formats(tag_name)
             tag_dir_path = src_dir / tag_dir
-            handler_filename = op.operation_id
+            handler_filename = operation_id
             handler_dir = handler_filename
             handler_file_dir_path = tag_dir_path / handler_dir
             self.file_writer.create_directory(str(handler_file_dir_path))
@@ -537,6 +569,7 @@ class SDKGenerator:
             operation_handler_content = self._generate_handler_class(
                 op, parent_class_name, sdk_class_filename, operation_metadata
             )
+            handler_file_paths_by_operation_id[op.operation_id] = str(handler_file_path)
             self.file_writer.write(str(handler_file_path), operation_handler_content)
             if tag_name not in operation_metadata_by_tag:
                 operation_metadata_by_tag[tag_name] = []
@@ -608,88 +641,100 @@ class SDKGenerator:
         # readme_content = self._generate_readme(operations_by_tag)
         # self.file_writer.write(str(readme_path), readme_content)
 
-
-def load_config(config_path: str = "borea.config.json") -> Dict[str, Any]:
-    """Load configuration from borea.config.json"""
-    try:
-        with open(config_path) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-
-
-default_models_dir = "models"
+        # Generate XCode samples
+        if self.generate_x_code_samples:
+            self._generate_x_code_samples(
+                handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
+                file_ext=file_ext,
+            )
 
 
 @click.command()
 @click.option(
-    "--input",
-    "input_file",
-    required=False,
-    type=click.Path(exists=True),
-    help="OpenAPI specification file (JSON or YAML)",
+    "--openapi-input",
+    "-i",
+    help="Path to OpenAPI specification file or URL",
+    type=str,
 )
 @click.option(
     "--sdk-output",
     "-o",
-    required=False,
-    type=click.Path(),
     help="Output directory for the generated SDK",
+    type=str,
 )
 @click.option(
     "--models-output",
-    required=False,
-    type=click.Path(),
-    help=f"Output directory for generated models (default: <sdk-output>/{default_models_dir})",
+    "-m",
+    help="Output directory for the generated models",
+    type=str,
 )
 @click.option(
-    "--tests", required=False, type=bool, help="Generate tests (default: False)"
+    "--tests",
+    "-t",
+    help="Generate tests",
+    default=None,
 )
 @click.option(
-    "--config", default="borea.config.json", type=str, help="Path to borea.config.json"
+    "--x-code-samples",
+    "-x",
+    help="Generate x-code-samples",
+    default=None,
+)
+@click.option(
+    "--config",
+    "-c",
+    help="Path to borea.config.json",
+    type=str,
 )
 def main(
-    input_file: Optional[str],
+    openapi_input: Optional[str],
     sdk_output: Optional[str],
     models_output: Optional[str],
     tests: Optional[bool],
+    x_code_samples: Optional[bool],
     config: Optional[str],
 ):
-    """Generate a Python SDK from an OpenAPI specification."""
-    # Load borea config values
-    borea_config = load_config(config) if config else {}
-    generator_config = borea_config.get("generator", {})
-    ignores = borea_config.get("ignores", [])
+    """Generate a Python SDK from an OpenAPI specification.
 
-    borea_config = BoreaConfig(
-        generator=GeneratorConfig(**generator_config),
-        ignores=ignores,
-    )
-
+    The OpenAPI specification can be provided as a local file path or a URL.
+    For URLs, both JSON and YAML formats are supported.
+    """
+    # Default values
+    default_config = "borea.config.json"
     default_input = "openapi.json"
-    default_sdk_output = "generated_sdk"
+    # default_sdk_output is defined below
+    default_models_dir = "models"
     default_tests = False
+    default_x_code_samples = False
 
-    # Use Click options if provided, otherwise fall back to config values
-    openapi_input_path = input_file or borea_config.generator.input or default_input
+    # Load borea config
+    borea_config: BoreaConfig = ConfigParser.from_source(config, default_config)
+
+    # Use defaults if CLI args OR config values are not provided
+    openapi_input = openapi_input or borea_config.input.openapi or default_input
+    parser = OpenAPIParser(openapi_input)
+    metadata = parser.parse()
+
+    default_sdk_output = SDKGenerator._clean_file_name(metadata.info.title)
     sdk_output_path = Path(
-        sdk_output or borea_config.generator.sdkOutput or default_sdk_output
+        sdk_output or borea_config.output.clientSDK or default_sdk_output
     )
     models_output_path = Path(
         sdk_output_path
-        / (models_output or borea_config.generator.modelsOutput or default_models_dir)
+        / (models_output or borea_config.output.models or default_models_dir)
     )
-    tests = tests or borea_config.generator.tests or default_tests
-
-    parser = OpenAPIParser(openapi_input_path)
-    metadata = parser.parse()
+    tests = tests or borea_config.output.tests or default_tests
+    x_code_samples = (
+        x_code_samples or borea_config.output.xCodeSamples or default_x_code_samples
+    )
 
     generator = SDKGenerator(
         metadata=metadata,
         output_dir=sdk_output_path,
         models_dir=models_output_path,
         generate_tests=tests,
-        config_path=config,
+        generate_x_code_samples=x_code_samples,
+        borea_config=borea_config,
     )
     generator.generate()
 

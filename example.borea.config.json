@@ -1,0 +1,12 @@
+{
+	"input": {
+		"openapi": ["openapi.json"]
+	},
+	"output": {
+		"clientSDK": "generated_sdk",
+		"models": "models",
+		"tests": false,
+		"xCodeSamples": false
+	},
+	"ignores": []
+}
