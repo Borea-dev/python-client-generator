@@ -41,8 +41,8 @@ class SDKGenerator:
         metadata: OpenAPIMetadata,
         output_dir: Path,
         models_dir: Path,
-        generate_tests: bool = True,
-        config_path: Optional[str] = None,
+        generate_tests: bool,
+        borea_config: BoreaConfig,
     ):
         self.metadata = metadata
         self.output_dir = output_dir
@@ -50,25 +50,29 @@ class SDKGenerator:
         self.generate_tests = generate_tests
         self.template_dir = Path(__file__).parent / "templates"
         self.env = Environment(loader=FileSystemLoader(str(self.template_dir)))
-        self.file_writer = ConfigurableFileWriter(config_path)
+        self.file_writer = ConfigurableFileWriter(ignores=borea_config.ignores)
 
-    def _clean_lower(self, tag: str) -> str:
+    @classmethod
+    def _clean_lower(cls, tag: str) -> str:
         """Clean tag name to be a valid Python identifier"""
-        return self._sanitize_string(tag).lower().replace(" ", "_").replace("-", "_")
+        return cls._sanitize_string(tag).lower().replace(" ", "_").replace("-", "_")
 
-    def _clean_capitalize(self, name: str) -> str:
+    @classmethod
+    def _clean_capitalize(cls, name: str) -> str:
         """Clean name to be a valid Python identifier"""
         # Remove spaces and dashes, convert to camel case
-        name = self._sanitize_string(name)
+        name = cls._sanitize_string(name)
         words = name.split("_")
         return "".join(word if word.isupper() else word.capitalize() for word in words)
 
-    def _clean_parameter_name(self, name: str) -> str:
+    @classmethod
+    def _clean_parameter_name(cls, name: str) -> str:
         """Clean parameter name to be a valid Python identifier"""
         # Convert hyphens to underscores
-        return self._sanitize_string(name).replace("-", "_").replace(" ", "_").lower()
+        return cls._sanitize_string(name).replace("-", "_").replace(" ", "_").lower()
 
-    def _clean_type_name(self, type_name: str) -> str:
+    @classmethod
+    def _clean_type_name(cls, type_name: str) -> str:
         """Clean type name to be a valid Python type"""
         if "int" in type_name:
             return "int"
@@ -82,26 +86,31 @@ class SDKGenerator:
         }
         return type_map.get(type_name.lower(), type_name)
 
-    def _clean_file_name(self, name: str) -> str:
+    @classmethod
+    def _clean_file_name(cls, name: str) -> str:
         """Clean name to be a valid file name"""
         # Convert to snake case
         name = name.replace("-", " ")
         words = name.split()
         return "_".join(word.lower() for word in words)
 
-    def _clean_schema_name(self, name: str) -> str:
+    @classmethod
+    def _clean_schema_name(cls, name: str) -> str:
         """Clean name to be a valid Python identifier"""
         return name.replace("-", "_").replace(" ", "_")
 
-    def _replace_dashes_with_underscores(self, name: str) -> str:
+    @classmethod
+    def _replace_dashes_with_underscores(cls, name: str) -> str:
         """Replace dashes with underscores"""
         return name.replace("-", "_")
 
-    def _replace_spaces_with_underscores(self, name: str) -> str:
+    @classmethod
+    def _replace_spaces_with_underscores(cls, name: str) -> str:
         """Replace spaces with underscores"""
         return name.replace(" ", "_")
 
-    def _format_description(self, description: str) -> str:
+    @classmethod
+    def _format_description(cls, description: str) -> str:
         """Format description to be a valid Python docstring"""
         return (
             description.replace("\\t", "")
@@ -110,13 +119,15 @@ class SDKGenerator:
             .replace('"', "'")
         )
 
-    def _sanitize_string(self, s: str) -> str:
+    @classmethod
+    def _sanitize_string(cls, s: str) -> str:
         # Replace common delimiters with underscore
         s = re.sub(r"[-/.,|:; ]", "_", s)
         # Remove all other special characters (keeping alphanumerics and underscores)
         s = re.sub(r"[^\w]", "", s)
         return s
 
+    @classmethod
     def _get_tag_formats(self, tag: str) -> Tuple[str, str, str]:
         tag_dir = self._clean_lower(tag)
         tag_class_name = self._clean_capitalize(tag)
@@ -609,7 +620,7 @@ class SDKGenerator:
         # readme_content = self._generate_readme(operations_by_tag)
         # self.file_writer.write(str(readme_path), readme_content)
 
-        # Generate output OpenAPI (openapi.json)
+        # Load OpenAPI content
         openapi_file = self.output_dir / "openapi.json"
         content_loader = ContentLoader()
         openapi_content = content_loader.load_json(self.metadata.openapi_input)
@@ -624,15 +635,6 @@ class SDKGenerator:
 
         # Write OpenAPI content to file
         self.file_writer.write(str(openapi_file), json.dumps(openapi_content, indent=2))
-
-
-def load_config(config_path: str = "borea.config.json") -> Dict[str, Any]:
-    """Load configuration from borea.config.json"""
-    try:
-        with open(config_path) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
 
 
 @click.command()
@@ -681,7 +683,6 @@ def main(
     # Default values
     default_config = "borea.config.json"
     default_input = "openapi.json"
-    default_sdk_output = "generated_sdk"
     default_models_dir = "models"
     default_tests = False
 
@@ -690,6 +691,10 @@ def main(
 
     # Use defaults if CLI args OR config values are not provided
     openapi_input = openapi_input or borea_config.input.openapi or default_input
+    parser = OpenAPIParser(openapi_input)
+    metadata = parser.parse()
+
+    default_sdk_output = SDKGenerator._clean_file_name(metadata.info.title)
     sdk_output_path = Path(
         sdk_output or borea_config.output.clientSDK or default_sdk_output
     )
@@ -699,15 +704,12 @@ def main(
     )
     tests = tests or borea_config.output.tests or default_tests
 
-    parser = OpenAPIParser(openapi_input)
-    metadata = parser.parse()
-
     generator = SDKGenerator(
         metadata=metadata,
         output_dir=sdk_output_path,
         models_dir=models_output_path,
         generate_tests=tests,
-        config_path=config,
+        borea_config=borea_config,
     )
     generator.generate()
 

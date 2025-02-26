@@ -42,6 +42,20 @@ class XCodeSampleGenerator:
         # TODO: change label
         return XCodeSamples(lang=self.lang, label=label, source=content)
 
+    def add_code_samples_from_file(
+        self, operation: Dict[str, Any], file_path: str, label: str
+    ) -> None:
+        """
+        Add x-codeSamples to an operation
+
+        Args:
+            operation: Operation to add the code sample to
+            file_path: Path to the file
+            label: Label for the code sample
+        """
+        code_sample = self._create_code_sample(file_path=file_path, label=label)
+        operation["x-codeSamples"] = [code_sample.model_dump()]
+
     def add_code_samples(self) -> Dict[str, Any]:
         """
         Add x-codeSamples to each operation in the OpenAPI content
@@ -62,10 +76,6 @@ class XCodeSampleGenerator:
                     label = operation.get("description", "") or operation.get(
                         "summary", ""
                     )
-                    code_sample = self._create_code_sample(
-                        file_path=file_path, label=label
-                    )
-                    # Add x-codeSamples to the operation
-                    operation["x-codeSamples"] = [code_sample.model_dump()]
+                    self.add_code_samples_from_file(operation, file_path, label)
 
         return self.openapi_content

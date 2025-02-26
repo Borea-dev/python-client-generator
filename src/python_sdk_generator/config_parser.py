@@ -173,5 +173,5 @@ class ConfigParser:
                 return parsed_config
             except Exception as e:
                 raise ConfigError(f"Failed to validate config: {str(e)}")
-        else:
-            return cls.get_default_config()
+
+        return cls.get_default_config()
