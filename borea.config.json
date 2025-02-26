@@ -1,0 +1,12 @@
+{
+	"input": {
+		"openapi": ["oxide/oxide.json"]
+	},
+	"output": {
+		"clientSDK": "oxide/oxide_client",
+		"models": "models",
+		"tests": false,
+		"xCodeSamples": false
+	},
+	"ignores": []
+}
