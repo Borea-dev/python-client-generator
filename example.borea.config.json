@@ -5,7 +5,8 @@
 	"output": {
 		"clientSDK": "generated_sdk",
 		"models": "models",
-		"tests": true
+		"tests": false,
+		"xCodeSamples": true
 	},
 	"ignores": []
 }

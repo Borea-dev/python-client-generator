@@ -84,11 +84,7 @@ class ConfigParser:
         Returns:
             OutputConfig: A new output config
         """
-        return OutputConfig(
-            clientSDK=output.clientSDK,
-            models=output.models,
-            tests=output.tests,
-        )
+        return OutputConfig(**output.model_dump())
 
     @classmethod
     def parse_config(cls, config: BoreaConfigJSON) -> BoreaConfig:

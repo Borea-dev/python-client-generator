@@ -20,6 +20,7 @@ class OutputConfig(BaseModel):
     clientSDK: Optional[str] = None
     models: Optional[str] = None
     tests: bool = False
+    xCodeSamples: bool = False
 
 
 class BoreaConfigJSON(BaseModel):

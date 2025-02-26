@@ -42,12 +42,14 @@ class SDKGenerator:
         output_dir: Path,
         models_dir: Path,
         generate_tests: bool,
+        generate_x_code_samples: bool,
         borea_config: BoreaConfig,
     ):
         self.metadata = metadata
         self.output_dir = output_dir
         self.models_dir = models_dir
         self.generate_tests = generate_tests
+        self.generate_x_code_samples = generate_x_code_samples
         self.template_dir = Path(__file__).parent / "templates"
         self.env = Environment(loader=FileSystemLoader(str(self.template_dir)))
         self.file_writer = ConfigurableFileWriter(ignores=borea_config.ignores)
@@ -439,29 +441,6 @@ class SDKGenerator:
             format_with_black=False,
         )
 
-    def _render_template_and_format_code(
-        self,
-        template_name: str,
-        template_metadata: Dict[str, Any],
-        format_with_black: bool = True,
-    ) -> str:
-        template = self.env.get_template(template_name)
-        try:
-            rendered_code = template.render(template_metadata)
-        except Exception as e:
-            click.echo(template_metadata)
-            raise e
-
-        if format_with_black:
-            try:
-                formatted_code = black.format_str(rendered_code, mode=black.Mode())
-            except Exception as e:
-                click.echo(rendered_code)
-                raise e
-            return formatted_code
-        else:
-            return rendered_code
-
     def _generate_tests(self, tag: str, operations: List[Operation]) -> str:
         """Generate tests for a specific tag"""
         template = self.env.get_template("test_client.py.jinja")
@@ -486,6 +465,48 @@ class SDKGenerator:
             template_metadata=template_metadata,
             format_with_black=False,
         )
+
+    def _generate_x_code_samples(
+        self, handler_file_paths_by_operation_id: Dict[str, str], file_ext: str
+    ) -> None:
+        # Load OpenAPI content
+        openapi_file = self.output_dir / "openapi.json"
+        content_loader = ContentLoader()
+        openapi_content = content_loader.load_json(self.metadata.openapi_input)
+
+        # Add code samples to OpenAPI content
+        code_sample_generator = XCodeSampleGenerator(
+            openapi_content=openapi_content,
+            handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
+            file_ext=file_ext,
+        )
+        openapi_content = code_sample_generator.add_code_samples()
+
+        # Write OpenAPI content to file
+        self.file_writer.write(str(openapi_file), json.dumps(openapi_content, indent=2))
+
+    def _render_template_and_format_code(
+        self,
+        template_name: str,
+        template_metadata: Dict[str, Any],
+        format_with_black: bool = True,
+    ) -> str:
+        template = self.env.get_template(template_name)
+        try:
+            rendered_code = template.render(template_metadata)
+        except Exception as e:
+            click.echo(template_metadata)
+            raise e
+
+        if format_with_black:
+            try:
+                formatted_code = black.format_str(rendered_code, mode=black.Mode())
+            except Exception as e:
+                click.echo(rendered_code)
+                raise e
+            return formatted_code
+        else:
+            return rendered_code
 
     def _get_tag_description(self, tag: str) -> Union[str, None]:
         for t in self.metadata.tags:
@@ -620,21 +641,12 @@ class SDKGenerator:
         # readme_content = self._generate_readme(operations_by_tag)
         # self.file_writer.write(str(readme_path), readme_content)
 
-        # Load OpenAPI content
-        openapi_file = self.output_dir / "openapi.json"
-        content_loader = ContentLoader()
-        openapi_content = content_loader.load_json(self.metadata.openapi_input)
-
-        # Add code samples to OpenAPI content
-        code_sample_generator = XCodeSampleGenerator(
-            openapi_content=openapi_content,
-            handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
-            file_ext=file_ext,
-        )
-        openapi_content = code_sample_generator.add_code_samples()
-
-        # Write OpenAPI content to file
-        self.file_writer.write(str(openapi_file), json.dumps(openapi_content, indent=2))
+        # Generate XCode samples
+        if self.generate_x_code_samples:
+            self._generate_x_code_samples(
+                handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
+                file_ext=file_ext,
+            )
 
 
 @click.command()
@@ -663,6 +675,12 @@ class SDKGenerator:
     default=None,
 )
 @click.option(
+    "--x-code-samples",
+    "-x",
+    help="Generate x-code-samples",
+    default=None,
+)
+@click.option(
     "--config",
     "-c",
     help="Path to borea.config.json",
@@ -673,6 +691,7 @@ def main(
     sdk_output: Optional[str],
     models_output: Optional[str],
     tests: Optional[bool],
+    x_code_samples: Optional[bool],
     config: Optional[str],
 ):
     """Generate a Python SDK from an OpenAPI specification.
@@ -685,6 +704,7 @@ def main(
     default_input = "openapi.json"
     default_models_dir = "models"
     default_tests = False
+    default_x_code_samples = False
 
     # Load borea config
     borea_config: BoreaConfig = ConfigParser.from_source(config, default_config)
@@ -703,12 +723,16 @@ def main(
         / (models_output or borea_config.output.models or default_models_dir)
     )
     tests = tests or borea_config.output.tests or default_tests
+    x_code_samples = (
+        x_code_samples or borea_config.output.xCodeSamples or default_x_code_samples
+    )
 
     generator = SDKGenerator(
         metadata=metadata,
         output_dir=sdk_output_path,
         models_dir=models_output_path,
         generate_tests=tests,
+        generate_x_code_samples=x_code_samples,
         borea_config=borea_config,
     )
     generator.generate()

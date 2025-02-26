@@ -98,7 +98,8 @@ The project uses `borea.config.json` for configuration settings. Example config 
 	"output": {
 		"clientSDK": "generated_sdk",
 		"models": "models",
-		"tests": true
+		"tests": false,
+		"xCodeSamples": true
 	},
 	"ignores": []
 }
@@ -122,12 +123,13 @@ Usage: python -m src.python_sdk_generator.python_sdk_generator
   URLs, both JSON and YAML formats are supported.
 
 Options:
-  -i, --openapi-input TEXT  Path to OpenAPI specification file or URL
-  -o, --sdk-output TEXT     Output directory for the generated SDK
-  -m, --models-output TEXT  Output directory for the generated models
-  -t, --tests TEXT          Generate tests
-  -c, --config TEXT         Path to borea.config.json
-  --help                    Show this message and exit.
+  -i, --openapi-input TEXT   Path to OpenAPI specification file or URL
+  -o, --sdk-output TEXT      Output directory for the generated SDK
+  -m, --models-output TEXT   Output directory for the generated models
+  -t, --tests TEXT           Generate tests
+  -x, --x-code-samples TEXT  Generate x-code-samples
+  -c, --config TEXT          Path to borea.config.json
+  --help                     Show this message and exit.
 ```
 
 ## Running Tests
