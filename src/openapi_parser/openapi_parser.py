@@ -273,7 +273,7 @@ class OpenAPIParser:
 def main(input_file, tag, operation_id):
     parser = OpenAPIParser(input_file, tag=tag, operation_id=operation_id)
     operations = parser.parse()
-    print("Path Operations:", json.dumps(operations.model_dump(), indent=2))
+    click.echo("Path Operations:", json.dumps(operations.model_dump(), indent=2))
 
 
 if __name__ == "__main__":

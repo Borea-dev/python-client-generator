@@ -9,8 +9,18 @@ from jinja2 import Environment, FileSystemLoader
 
 from ..content_loader import ContentLoader
 
-from .models.borea_config_models import BoreaConfig
+from ..openapi_parser.openapi_parser import OpenAPIParser
+from ..openapi_parser.models import (
+    HttpParameter,
+    OpenAPIMetadata,
+    Operation,
+    SchemaMetadata,
+)
+
 from .config_parser import ConfigParser
+from .file_writer import ConfigurableFileWriter
+from .x_code_sample_generator import XCodeSampleGenerator
+from .models.borea_config_models import BoreaConfig
 
 from .models.schema_model import SchemaPyJinja
 from .models.sdk_class_models import (
@@ -22,14 +32,6 @@ from .models.handler_class_models import (
     HandlerClassPyJinja,
     HandlerClassPyJinja,
     MethodParameter,
-)
-from .file_writer import ConfigurableFileWriter
-from ..openapi_parser.openapi_parser import OpenAPIParser
-from ..openapi_parser.models import (
-    HttpParameter,
-    OpenAPIMetadata,
-    Operation,
-    SchemaMetadata,
 )
 
 
@@ -513,12 +515,14 @@ class SDKGenerator:
             self.file_writer.create_directory(str(test_dir))
 
         # Generate handlers (tag/<operation_id>/<operation_id>.py)
+        handler_file_paths_by_operation_id: Dict[str, str] = {}
         operation_metadata_by_tag: Dict[str, List[OperationMetadata]] = {}
         for op in self.metadata.operations:
+            operation_id = op.operation_id
             tag_name = op.tag
             tag_dir, tag_class_name, tag_filename = self._get_tag_formats(tag_name)
             tag_dir_path = src_dir / tag_dir
-            handler_filename = op.operation_id
+            handler_filename = operation_id
             handler_dir = handler_filename
             handler_file_dir_path = tag_dir_path / handler_dir
             self.file_writer.create_directory(str(handler_file_dir_path))
@@ -533,6 +537,7 @@ class SDKGenerator:
             operation_handler_content = self._generate_handler_class(
                 op, parent_class_name, sdk_class_filename, operation_metadata
             )
+            handler_file_paths_by_operation_id[op.operation_id] = str(handler_file_path)
             self.file_writer.write(str(handler_file_path), operation_handler_content)
             if tag_name not in operation_metadata_by_tag:
                 operation_metadata_by_tag[tag_name] = []
@@ -604,10 +609,20 @@ class SDKGenerator:
         # readme_content = self._generate_readme(operations_by_tag)
         # self.file_writer.write(str(readme_path), readme_content)
 
-        # Load openapi.json
+        # Generate output OpenAPI (openapi.json)
         openapi_file = self.output_dir / "openapi.json"
         content_loader = ContentLoader()
         openapi_content = content_loader.load_json(self.metadata.openapi_input)
+
+        # Add code samples to OpenAPI content
+        code_sample_generator = XCodeSampleGenerator(
+            openapi_content=openapi_content,
+            handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
+            file_ext=file_ext,
+        )
+        openapi_content = code_sample_generator.add_code_samples()
+
+        # Write OpenAPI content to file
         self.file_writer.write(str(openapi_file), json.dumps(openapi_content, indent=2))
 
 

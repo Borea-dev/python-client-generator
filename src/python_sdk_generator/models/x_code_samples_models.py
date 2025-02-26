@@ -2,7 +2,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
-class XCodeSamplesModels(BaseModel):
+class XCodeSamples(BaseModel):
     """
     Model for XCodeSamples
 
@@ -36,5 +36,5 @@ class XCodeSamplesModels(BaseModel):
         "Swift",
         "TypeScript",
     ] = Field(..., description="The language of the code sample")
-    label: str = Field(..., default="", description="The label of the code sample")
+    label: str = Field("", description="The label of the code sample")
     source: str = Field(..., description="The code sample source code")

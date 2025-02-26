@@ -3,7 +3,7 @@
 import json
 import yaml
 from pathlib import Path
-from typing import Union, Optional, Any
+from typing import Dict, Union, Optional, Any
 from urllib.request import urlopen
 from urllib.error import URLError
 
@@ -78,7 +78,7 @@ class ContentLoader:
                     f"Content from {path} is neither valid JSON nor YAML: {str(e)}"
                 )
 
-    def load_json(self, path: str) -> Any:
+    def load_json(self, path: str) -> Dict[str, Any]:
         """
         Load and parse JSON content from a URL or file path.
 
