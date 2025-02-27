@@ -1,7 +1,6 @@
-import re
 import json
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import black
@@ -11,12 +10,13 @@ from ..content_loader import ContentLoader
 
 from ..openapi_parser.openapi_parser import OpenAPIParser
 from ..openapi_parser.models import (
-    HttpParameter,
     OpenAPIMetadata,
     Operation,
     SchemaMetadata,
 )
 
+from .helpers import Helpers
+from .generate_method_metadata import GenerateMethodMetadata
 from .config_parser import ConfigParser
 from .file_writer import ConfigurableFileWriter
 from .x_code_sample_generator import XCodeSampleGenerator
@@ -31,7 +31,6 @@ from .models.tag_class_models import TagClassPyJinja, OperationMetadata
 from .models.handler_class_models import (
     HandlerClassPyJinja,
     HandlerClassPyJinja,
-    MethodParameter,
 )
 
 
@@ -55,265 +54,21 @@ class SDKGenerator:
         self.file_writer = ConfigurableFileWriter(ignores=borea_config.ignores)
 
     @classmethod
-    def _clean_lower(cls, tag: str) -> str:
-        """Clean tag name to be a valid Python identifier"""
-        return cls._sanitize_string(tag).lower().replace(" ", "_").replace("-", "_")
-
-    @classmethod
-    def _clean_capitalize(cls, name: str) -> str:
-        """Clean name to be a valid Python identifier"""
-        # Remove spaces and dashes, convert to camel case
-        name = cls._sanitize_string(name)
-        words = name.split("_")
-        return "".join(word if word.isupper() else word.capitalize() for word in words)
-
-    @classmethod
-    def _clean_parameter_name(cls, name: str) -> str:
-        """Clean parameter name to be a valid Python identifier"""
-        # Convert hyphens to underscores
-        return cls._sanitize_string(name).replace("-", "_").replace(" ", "_").lower()
-
-    @classmethod
-    def _clean_type_name(cls, type_name: str) -> str:
-        """Clean type name to be a valid Python type"""
-        if "int" in type_name:
-            return "int"
-        type_map = {
-            "string": "str",
-            "integer": "int",
-            "boolean": "bool",
-            "number": "float",
-            "array": "List",
-            "object": "Dict[str, Any]",
-        }
-        return type_map.get(type_name.lower(), type_name)
-
-    @classmethod
-    def _clean_file_name(cls, name: str) -> str:
-        """Clean name to be a valid file name"""
-        # Convert to snake case
-        name = name.replace("-", " ")
-        words = name.split()
-        return "_".join(word.lower() for word in words)
-
-    @classmethod
-    def _clean_schema_name(cls, name: str) -> str:
-        """Clean name to be a valid Python identifier"""
-        return name.replace("-", "_").replace(" ", "_")
-
-    @classmethod
-    def _replace_dashes_with_underscores(cls, name: str) -> str:
-        """Replace dashes with underscores"""
-        return name.replace("-", "_")
-
-    @classmethod
-    def _replace_spaces_with_underscores(cls, name: str) -> str:
-        """Replace spaces with underscores"""
-        return name.replace(" ", "_")
-
-    @classmethod
-    def _format_description(cls, description: str) -> str:
-        """Format description to be a valid Python docstring"""
-        return (
-            description.replace("\\t", "")
-            .replace("\\n", "")
-            .replace("\\r", "")
-            .replace('"', "'")
-        )
-
-    @classmethod
-    def _sanitize_string(cls, s: str) -> str:
-        # Replace common delimiters with underscore
-        s = re.sub(r"[-/.,|:; ]", "_", s)
-        # Remove all other special characters (keeping alphanumerics and underscores)
-        s = re.sub(r"[^\w]", "", s)
-        return s
-
-    @classmethod
     def _get_tag_formats(self, tag: str) -> Tuple[str, str, str]:
-        tag_dir = self._clean_lower(tag)
-        tag_class_name = self._clean_capitalize(tag)
+        tag_dir = Helpers.clean_lower(tag)
+        tag_class_name = Helpers.clean_capitalize(tag)
         tag_filename = tag_dir
         return tag_dir, tag_class_name, tag_filename
 
-    def _group_operations_by_tag(
-        self,
-    ) -> Tuple[Dict[str, List[Operation]], Dict[str, OpenAPITagMetadata]]:
-        """Group operations by their tags"""
-        operations_by_tag: Dict[str, List[Operation]] = {}
-        tag_metadata_by_tag: Dict[str, OpenAPITagMetadata] = {}
-        for op in self.metadata.operations:
-            tag = op.tag
-            tag_lowered = self._clean_lower(tag)
-            if tag_lowered not in operations_by_tag:
-                operations_by_tag[tag_lowered] = []
-            operations_by_tag[tag_lowered].append(op)
-
-            tag_capitalized = self._clean_capitalize(tag)
-            tag_filename = tag_lowered + "_handler"
-
-            tag_metadata_by_tag[tag_lowered] = OpenAPITagMetadata(
-                tag=tag,
-                tag_dir=tag_lowered,
-                tag_filename=tag_filename,
-                tag_class_name=tag_capitalized,
-                tag_prop_name=tag_lowered,
-                tag_description="",
-            )
-
-        return operations_by_tag, tag_metadata_by_tag
-
-    def _generate_models(self):
+    def _generate_models(self, models_filename: str, file_ext: str):
         """Generate Pydantic models using datamodel-code-generator"""
-
-    def format_type(self, type_info: Union[Dict, str, None]) -> str:
-        resolved_type: str = "Any"
-        if type_info is None:
-            pass
-        elif isinstance(type_info, str) and type_info not in ["object", "array"]:
-            resolved_type = self._clean_type_name(type_info)
-        elif isinstance(type_info, dict):
-            if "$ref" in type_info:
-                resolved_type = type_info["$ref"].split("/")[-1]
-            elif type_info.get("type") == "array":
-                resolved_type = f"List[{self.format_type(type_info.get('items', {}))}]"
-            elif "type" in type_info and type_info["type"] not in ["object", "array"]:
-                resolved_type = self._clean_type_name(type_info["type"])
-            elif "allOf" in type_info:
-                # TODO fix this when it hits
-                # not hitting...
-                resolved_type = " & ".join(
-                    (
-                        self.format_type(item)
-                        if isinstance(item, dict) and "$ref" not in item
-                        else item["$ref"].split("/")[-1]
-                    )
-                    for item in type_info["allOf"]
-                )
-            elif "oneOf" in type_info:
-                # not hitting...
-                resolved_type = f"Union[{', '.join(self.format_type(item) for item in type_info['oneOf'])}]"
-            elif "anyOf" in type_info:
-                # not hitting...
-                resolved_type = f"Union[{', '.join(self.format_type(item) for item in type_info['anyOf'])}]"
-            elif "not" in type_info:
-                # not hitting...
-                resolved_type = "Any"
-            else:
-                pass
-        else:
-            pass
-
-        return resolved_type
-
-    def _get_single_nested_schema(
-        self, schema: Union[SchemaMetadata, None]
-    ) -> Union[Dict[str, Any], None]:
-        if schema is None:
-            return None
-        if schema.length_nested_json_schemas != 1:
-            return schema.model_dump()
-        schema = schema.model_dump()
-        nested_schema = schema.get("nested_json_schemas", [None])[0]
-        if nested_schema:
-            return nested_schema
-        return schema
-
-    def _method_params_from_http_params(
-        self, http_params: List[HttpParameter], cond: Callable[[HttpParameter], bool]
-    ) -> List[MethodParameter]:
-        """
-        Returns a list of MethodParameter objects based on the given condition.
-        """
-        return [
-            MethodParameter(
-                required=http_param.required,
-                name=http_param.name,
-                original_name=http_param.original_name,
-                type=self.format_type(http_param.type),
-                description=http_param.description,
-            )
-            for http_param in http_params
-            if cond(http_param)
-        ]
-
-    def _method_params_from_schema_props(
-        self,
-        schema: Dict[str, Any],
-        props: List[Dict[str, Any]],
-        cond: Callable[[str, bool], bool],
-    ) -> List[MethodParameter]:
-        default_description = "No description provided"
-        schema_required = schema.get("required", [])
-        is_required = lambda prop_name, prop: prop_name in schema_required or prop.get(
-            "required", False
+        openapi_input = self.metadata.openapi_input
+        models_file_path = models_filename + file_ext
+        self.file_writer.generate_python_models(
+            models_dir=str(self.models_dir),
+            models_file_path=models_file_path,
+            openapi_input=openapi_input,
         )
-        return [
-            MethodParameter(
-                required=is_required(prop_name, prop),
-                name=prop_name,
-                type=self.format_type(prop),
-                description=prop.get("description", None)
-                or prop.get("nested_json_schemas", [schema])[0].get("description", None)
-                or default_description,
-            )
-            for prop_name, prop in props.items()
-            if cond(prop_name, is_required(prop_name, prop))
-        ]
-
-    def _method_param_from_request_body(
-        self, request_body: Dict[str, Any]
-    ) -> List[MethodParameter]:
-        return [
-            MethodParameter(
-                required=request_body.get("required", False),
-                name="request_body",
-                type=self.format_type(request_body.get("type", None)),
-                description=request_body.get("description", "Request body"),
-            )
-        ]
-
-    def _resolve_method_params(
-        self, operation: Operation, schema: Union[Dict[str, Any], None]
-    ) -> Tuple[List[MethodParameter], List[MethodParameter]]:
-        required_http_params: List[MethodParameter] = (
-            self._method_params_from_http_params(
-                operation.parameters, lambda http_param: http_param.required == True
-            )
-        )
-        optional_http_params: List[MethodParameter] = (
-            self._method_params_from_http_params(
-                operation.parameters, lambda http_param: http_param.required != True
-            )
-        )
-        http_param_names = [param.name for param in operation.parameters]
-
-        required_schema_props: List[MethodParameter] = []
-        optional_schema_props: List[MethodParameter] = []
-        if schema is not None:
-            schema_props = schema.get("properties", None)
-            if schema_props:
-                required_schema_props += self._method_params_from_schema_props(
-                    schema,
-                    schema_props,
-                    lambda prop_name, is_required: is_required
-                    and prop_name not in http_param_names,
-                )
-                optional_schema_props += self._method_params_from_schema_props(
-                    schema,
-                    schema_props,
-                    lambda prop_name, is_required: not is_required
-                    and prop_name not in http_param_names,
-                )
-            elif schema.get("required", False):
-                required_schema_props += self._method_param_from_request_body(schema)
-            else:
-                optional_schema_props += self._method_param_from_request_body(schema)
-
-        required_method_params = required_http_params + required_schema_props
-        optional_method_params = optional_http_params + optional_schema_props
-
-        return [required_method_params, optional_method_params]
 
     def _generate_handler_class(
         self,
@@ -328,18 +83,15 @@ class SDKGenerator:
         for param in op.parameters:
             # Add original name for query parameters
             param.original_name = param.name
-            param.name = self._clean_parameter_name(param.name)
-            param.type = self._clean_type_name(param.type)
+            param.name = Helpers.clean_parameter_name(param.name)
+            param.type = Helpers.clean_type_name(param.type)
         if op.request_body and isinstance(op.request_body, SchemaMetadata):
-            op.request_body.type = self._clean_type_name(op.request_body.type)
+            op.request_body.type = Helpers.clean_type_name(op.request_body.type)
 
         http_params = op.parameters
         request_body = op.request_body
-        schema: Union[Dict[str, Any], None] = self._get_single_nested_schema(
-            op.request_body
-        )
-        required_method_params, optional_method_params = self._resolve_method_params(
-            operation=operation, schema=schema
+        schema, required_method_params, optional_method_params = (
+            GenerateMethodMetadata.resolve_method_params(op.parameters, op.request_body)
         )
         handler_metadata = HandlerClassPyJinja(
             parent_class_name=parent_class_name,
@@ -409,10 +161,10 @@ class SDKGenerator:
         }
 
         for schema_name, schema_data in schemas.items():
-            file_name = self._clean_schema_name(schema_name) + file_ext
+            file_name = Helpers.clean_schema_name(schema_name) + file_ext
             file_path = self.models_dir / file_name
             description = schema_data.get("description", "")
-            description = self._format_description(description)
+            description = Helpers.format_description(description)
 
             template_metadata = SchemaPyJinja(
                 schema_name=schema_name,
@@ -447,7 +199,7 @@ class SDKGenerator:
         template_metadata = {
             "tag": tag,
             "operations": operations,
-            "class_name": self._clean_capitalize(tag),
+            "class_name": Helpers.clean_capitalize(tag),
             "metadata": self.metadata,
         }
         return self._render_template_and_format_code(
@@ -518,21 +270,15 @@ class SDKGenerator:
         """Generate the SDK."""
         # Shared SDK class / file vars
         file_ext = ".py"
-        parent_class_name = self._clean_capitalize(self.metadata.info.title)
-        sdk_class_filename = self._clean_file_name(self.metadata.info.title)
+        parent_class_name = Helpers.clean_capitalize(self.metadata.info.title)
+        sdk_class_filename = Helpers.clean_file_name(self.metadata.info.title)
 
         # Create output directories
         self.file_writer.create_directory(str(self.output_dir) or sdk_class_filename)
 
         # Generate models
-        openapi_input = self.metadata.openapi_input
         models_filename = "models"
-        models_file_path = models_filename + file_ext
-        self.file_writer.generate_python_models(
-            models_dir=str(self.models_dir),
-            models_file_path=models_file_path,
-            openapi_input=openapi_input,
-        )
+        self._generate_models(models_filename=models_filename, file_ext=file_ext)
 
         # Generate schema files
         self._generate_schema_files(models_filename=models_filename, file_ext=file_ext)
@@ -560,7 +306,7 @@ class SDKGenerator:
             self.file_writer.create_directory(str(handler_file_dir_path))
             handler_file = handler_filename + file_ext
             handler_file_path = handler_file_dir_path / handler_file
-            handler_class_name = self._clean_capitalize(handler_filename)
+            handler_class_name = Helpers.clean_capitalize(handler_filename)
             operation_metadata = OperationMetadata(
                 handler_dir=handler_dir,
                 handler_filename=handler_filename,
@@ -715,7 +461,7 @@ def main(
     parser = OpenAPIParser(openapi_input)
     metadata = parser.parse()
 
-    default_sdk_output = SDKGenerator._clean_file_name(metadata.info.title)
+    default_sdk_output = Helpers.clean_file_name(metadata.info.title)
     sdk_output_path = Path(
         sdk_output or borea_config.output.clientSDK or default_sdk_output
     )
