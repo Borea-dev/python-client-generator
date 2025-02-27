@@ -1,6 +1,9 @@
 {
 	"input": {
-		"openapi": ["oxide/oxide.json"]
+		"openapi": [
+			"oxide/oxide.json",
+			"https://raw.githubusercontent.com/oxidecomputer/oxide.rs/refs/heads/main/oxide.json"
+		]
 	},
 	"output": {
 		"clientSDK": "oxide/oxide_client",
