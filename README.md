@@ -21,6 +21,12 @@ _`source` is required to activate the virtual environment_
 source ./setup.sh
 ```
 
+Deactivate the Python venv:
+
+```bash
+deactivate
+```
+
 This script will:
 
 1. Create a Python virtual environment (`.venv`)

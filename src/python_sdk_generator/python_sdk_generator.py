@@ -220,22 +220,14 @@ class SDKGenerator:
 
     def _generate_x_code_samples(
         self, handler_file_paths_by_operation_id: Dict[str, str], file_ext: str
-    ) -> None:
-        # Load OpenAPI content
-        openapi_file = self.output_dir / "openapi.json"
-        content_loader = ContentLoader()
-        openapi_content = content_loader.load_json(self.metadata.openapi_input)
-
-        # Add code samples to OpenAPI content
+    ) -> Dict[str, Any]:
         code_sample_generator = XCodeSampleGenerator(
             openapi_content=openapi_content,
             handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
             file_ext=file_ext,
         )
         openapi_content = code_sample_generator.add_code_samples()
-
-        # Write OpenAPI content to file
-        self.file_writer.write(str(openapi_file), json.dumps(openapi_content, indent=2))
+        return openapi_content
 
     def _render_template_and_format_code(
         self,
@@ -387,12 +379,19 @@ class SDKGenerator:
         # readme_content = self._generate_readme(operations_by_tag)
         # self.file_writer.write(str(readme_path), readme_content)
 
-        # Generate XCode samples
+        # TODO: ask costumers if they want openapi.json ALWAYS output OR ONLY if it is being generated
+        # Load OpenAPI content
+        openapi_file = self.output_dir / "openapi.json"
+        content_loader = ContentLoader()
+        openapi_content = content_loader.load_json(self.metadata.openapi_input)
+        # Add x-codeSamples to OpenAPI content
         if self.generate_x_code_samples:
-            self._generate_x_code_samples(
+            openapi_content = self._generate_x_code_samples(
                 handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
                 file_ext=file_ext,
             )
+        # Write OpenAPI content to file
+        self.file_writer.write(str(openapi_file), json.dumps(openapi_content, indent=2))
 
 
 @click.command()
