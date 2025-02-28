@@ -1,5 +1,6 @@
 # from __future__ import annotations  # Enables postponed evaluation of annotations
-from typing import Any, Dict, List, Optional, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from pydantic import BaseModel, Field
 
 

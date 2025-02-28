@@ -3,11 +3,11 @@ from typing import Any, Dict, List, Union
 
 import click
 
-from ..content_loader import ContentLoader
-from .models import (
-    OpenAPIMetadata,
+from .content_loader import ContentLoader
+from .models.openapi_models import (
     HttpHeader,
     HttpParameter,
+    OpenAPIMetadata,
     Operation,
     SchemaMetadata,
 )

@@ -1,6 +1,8 @@
-from typing import Any, Dict, List, Optional, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from pydantic import BaseModel, Field
-from ...openapi_parser.models import HttpParameter, SchemaMetadata
+
+from .openapi_models import HttpParameter, SchemaMetadata
 
 
 class MethodParameter(BaseModel):

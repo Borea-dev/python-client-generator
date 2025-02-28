@@ -5,31 +5,28 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import click
 from jinja2 import Environment, FileSystemLoader
 
-from ..content_loader import ContentLoader
-
-from ..openapi_parser.openapi_parser import OpenAPIParser
-from ..openapi_parser.models import (
+from .config_parser import ConfigParser
+from .content_loader import ContentLoader
+from .file_writer import ConfigurableFileWriter
+from .generate_method_metadata import GenerateMethodMetadata
+from .helpers import Helpers
+from .models.borea_config_models import BoreaConfig
+from .models.handler_class_models import (
+    HandlerClassPyJinja,
+)
+from .models.openapi_models import (
     OpenAPIMetadata,
     Operation,
     SchemaMetadata,
 )
-
-from .helpers import Helpers
-from .generate_method_metadata import GenerateMethodMetadata
-from .config_parser import ConfigParser
-from .file_writer import ConfigurableFileWriter
-from .x_code_sample_generator import XCodeSampleGenerator
-from .models.borea_config_models import BoreaConfig
-
 from .models.schema_model import SchemaPyJinja
 from .models.sdk_class_models import (
-    SdkClassPyJinja,
     OpenAPITagMetadata,
+    SdkClassPyJinja,
 )
-from .models.tag_class_models import TagClassPyJinja, OperationMetadata
-from .models.handler_class_models import (
-    HandlerClassPyJinja,
-)
+from .models.tag_class_models import OperationMetadata, TagClassPyJinja
+from .openapi_parser import OpenAPIParser
+from .x_code_sample_generator import XCodeSampleGenerator
 
 
 class SDKGenerator:

@@ -1,6 +1,8 @@
 from typing import List
+
 from pydantic import BaseModel
-from ...openapi_parser.models import HttpHeader
+
+from .openapi_models import HttpHeader
 
 
 class OpenAPITagMetadata(BaseModel):

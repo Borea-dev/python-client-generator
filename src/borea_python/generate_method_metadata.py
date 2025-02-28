@@ -1,9 +1,8 @@
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-from ..openapi_parser.models import HttpParameter, SchemaMetadata
-
 from .helpers import Helpers
 from .models.handler_class_models import MethodParameter
+from .models.openapi_models import HttpParameter, SchemaMetadata
 
 
 class GenerateMethodMetadata:
