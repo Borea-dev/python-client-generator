@@ -366,6 +366,7 @@ class SDKGenerator:
 
         Helpers.run_ruff_on_path(self.output_dir)
 
+        # TODO: move to pyproject.toml for easy SDK PyPi packaging
         # Generate requirements.txt
         requirements_path = self.output_dir / "requirements.txt"
         requirements_content = self._generate_requirements()
