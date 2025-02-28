@@ -83,7 +83,7 @@ pip install -r src/requirements.txt
 2. Run the SDK generator after configuration:
 
 ```bash
-python -m src.python_sdk_generator.python_sdk_generator
+python -m src.borea-python.python_sdk_generator.python_sdk_generator
 ```
 
 The generator will create the Python HTTP client SDK based on the OpenAPI specification.
@@ -120,7 +120,7 @@ The project uses `borea.config.json` for configuration settings. Example config 
 Show this help message with `--help`:
 
 ```bash
-Usage: python -m src.python_sdk_generator.python_sdk_generator
+Usage: python -m src.borea-python.python_sdk_generator.python_sdk_generator
            [OPTIONS]
 
   Generate a Python SDK from an OpenAPI specification.

@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from .models.x_code_samples_models import XCodeSamples
 
 

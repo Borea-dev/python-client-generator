@@ -1,5 +1,6 @@
 import re
-from typing import Any, Union, Dict, List, Optional
+from typing import Union, Dict
+import click
 
 
 class Helpers:
@@ -118,3 +119,25 @@ class Helpers:
             pass
 
         return resolved_type
+
+    @staticmethod
+    def run_ruff_on_path(path: str):
+        import subprocess
+
+        def ruff(command: str, path: str):
+            subprocess.run(
+                ["ruff", command, path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+
+        try:
+            # Run ruff check (linting)
+            # ruff("check", file_path)
+
+            # Run ruff format (formatting)
+            ruff("format", path)
+
+        except subprocess.CalledProcessError as e:
+            click.echo(f"Error running ruff: {e}")

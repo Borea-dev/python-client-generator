@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class SchemaPyJinja(BaseModel):

@@ -1,6 +1,6 @@
 # from __future__ import annotations  # Enables postponed evaluation of annotations
 from typing import Any, Dict, List, Optional, Union, Literal
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field
 
 
 class HttpParameter(BaseModel):

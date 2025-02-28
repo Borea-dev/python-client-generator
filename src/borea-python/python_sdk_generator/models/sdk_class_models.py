@@ -1,5 +1,5 @@
-from typing import Any, Dict, List, Optional, Union, Literal
-from pydantic import BaseModel, Field
+from typing import List
+from pydantic import BaseModel
 from ...openapi_parser.models import HttpHeader
 
 

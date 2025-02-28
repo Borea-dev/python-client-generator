@@ -1,5 +1,4 @@
-import os
-from typing import List, Optional, Union
+from typing import List, Optional
 import click
 
 from ..path_validator import PathValidator

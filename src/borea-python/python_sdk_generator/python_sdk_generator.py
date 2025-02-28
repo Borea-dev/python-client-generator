@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
-import black
 from jinja2 import Environment, FileSystemLoader
 
 from ..content_loader import ContentLoader
@@ -29,7 +28,6 @@ from .models.sdk_class_models import (
 )
 from .models.tag_class_models import TagClassPyJinja, OperationMetadata
 from .models.handler_class_models import (
-    HandlerClassPyJinja,
     HandlerClassPyJinja,
 )
 
@@ -63,10 +61,10 @@ class SDKGenerator:
     def _generate_models(self, models_filename: str, file_ext: str):
         """Generate Pydantic models using datamodel-code-generator"""
         openapi_input = self.metadata.openapi_input
-        models_file_path = models_filename + file_ext
+        models_file = models_filename + file_ext
         self.file_writer.generate_python_models(
             models_dir=str(self.models_dir),
-            models_file_path=models_file_path,
+            models_file=models_file,
             openapi_input=openapi_input,
         )
 
@@ -108,7 +106,7 @@ class SDKGenerator:
             nested_schema=schema,
         ).model_dump()
 
-        return self._render_template_and_format_code(
+        return self._render_code(
             "handler_class.py.jinja", template_metadata=handler_metadata
         )
 
@@ -128,7 +126,7 @@ class SDKGenerator:
             operation_metadata=operation_metadata,
         ).model_dump()
 
-        return self._render_template_and_format_code(
+        return self._render_code(
             "tag_class.py.jinja", template_metadata=template_metadata
         )
 
@@ -147,13 +145,13 @@ class SDKGenerator:
             tags=tag_metadata,
         ).model_dump()
 
-        return self._render_template_and_format_code(
+        return self._render_code(
             "sdk_class.py.jinja", template_metadata=template_metadata
         )
 
     def _generate_schema_files(self, models_filename: str, file_ext: str) -> None:
         """Generate individual schema files for each component in the models_output directory."""
-        self.file_writer.create_directory(str(self.models_dir))
+        self._create_directory(str(self.models_dir))
 
         schemas = {
             **self.metadata.components.schemas,
@@ -173,10 +171,10 @@ class SDKGenerator:
                 description=description,
             ).model_dump()
 
-            rendered_code = self._render_template_and_format_code(
+            rendered_code = self._render_code(
                 "schema.py.jinja", template_metadata=template_metadata
             )
-            self.file_writer.write(str(file_path), rendered_code)
+            self._write_and_format(str(file_path), rendered_code)
 
     def _generate_requirements(self) -> str:
         """Generate requirements.txt with required dependencies using a template"""
@@ -187,22 +185,20 @@ class SDKGenerator:
             "generation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
-        return self._render_template_and_format_code(
+        return self._render_code(
             "requirements.txt.jinja",
             template_metadata=template_metadata,
-            format_with_black=False,
         )
 
     def _generate_tests(self, tag: str, operations: List[Operation]) -> str:
         """Generate tests for a specific tag"""
-        template = self.env.get_template("test_client.py.jinja")
         template_metadata = {
             "tag": tag,
             "operations": operations,
             "class_name": Helpers.clean_capitalize(tag),
             "metadata": self.metadata,
         }
-        return self._render_template_and_format_code(
+        return self._render_code(
             "test_client.py.jinja", template_metadata=template_metadata
         )
 
@@ -212,14 +208,16 @@ class SDKGenerator:
             "metadata": self.metadata,
             "operations_by_tag": operations_by_tag,
         }
-        return self._render_template_and_format_code(
+        return self._render_code(
             "README.md.jinja",
             template_metadata=template_metadata,
-            format_with_black=False,
         )
 
     def _generate_x_code_samples(
-        self, handler_file_paths_by_operation_id: Dict[str, str], file_ext: str
+        self,
+        openapi_content: Dict[str, Any],
+        handler_file_paths_by_operation_id: Dict[str, str],
+        file_ext: str,
     ) -> Dict[str, Any]:
         code_sample_generator = XCodeSampleGenerator(
             openapi_content=openapi_content,
@@ -229,11 +227,10 @@ class SDKGenerator:
         openapi_content = code_sample_generator.add_code_samples()
         return openapi_content
 
-    def _render_template_and_format_code(
+    def _render_code(
         self,
         template_name: str,
         template_metadata: Dict[str, Any],
-        format_with_black: bool = True,
     ) -> str:
         template = self.env.get_template(template_name)
         try:
@@ -241,22 +238,21 @@ class SDKGenerator:
         except Exception as e:
             click.echo(template_metadata)
             raise e
-
-        if format_with_black:
-            try:
-                formatted_code = black.format_str(rendered_code, mode=black.Mode())
-            except Exception as e:
-                click.echo(rendered_code)
-                raise e
-            return formatted_code
-        else:
-            return rendered_code
+        return rendered_code
 
     def _get_tag_description(self, tag: str) -> Union[str, None]:
         for t in self.metadata.tags:
             if t == tag:
                 return t.description
         return None
+
+    def _create_directory(self, dir_path: str) -> None:
+        self.file_writer.create_directory(dir_path)
+        self.file_writer.write(str(Path(dir_path) / "__init__.py"), "")
+
+    def _write_and_format(self, file_path: str, file_content: str) -> None:
+        self.file_writer.write(file_path, file_content)
+        # Helpers.run_ruff_on_path(file_path)
 
     def generate(self) -> None:
         """Generate the SDK."""
@@ -277,12 +273,12 @@ class SDKGenerator:
 
         # Generate src directory if needed
         src_dir = self.output_dir / "src"
-        self.file_writer.create_directory(str(src_dir))
+        self._create_directory(str(src_dir))
 
         # Generate test directory if needed
         test_dir = self.output_dir / "tests"
         if self.generate_tests:
-            self.file_writer.create_directory(str(test_dir))
+            self._create_directory(str(test_dir))
 
         # Generate handlers (tag/<operation_id>/<operation_id>.py)
         handler_file_paths_by_operation_id: Dict[str, str] = {}
@@ -295,7 +291,7 @@ class SDKGenerator:
             handler_filename = operation_id
             handler_dir = handler_filename
             handler_file_dir_path = tag_dir_path / handler_dir
-            self.file_writer.create_directory(str(handler_file_dir_path))
+            self._create_directory(str(handler_file_dir_path))
             handler_file = handler_filename + file_ext
             handler_file_path = handler_file_dir_path / handler_file
             handler_class_name = Helpers.clean_capitalize(handler_filename)
@@ -308,7 +304,7 @@ class SDKGenerator:
                 op, parent_class_name, sdk_class_filename, operation_metadata
             )
             handler_file_paths_by_operation_id[op.operation_id] = str(handler_file_path)
-            self.file_writer.write(str(handler_file_path), operation_handler_content)
+            self._write_and_format(str(handler_file_path), operation_handler_content)
             if tag_name not in operation_metadata_by_tag:
                 operation_metadata_by_tag[tag_name] = []
             operation_metadata_by_tag[tag_name].append(operation_metadata)
@@ -318,12 +314,12 @@ class SDKGenerator:
             if self.generate_tests:
                 tag_test_dir_path = test_dir / tag_dir
                 handler_test_file_dir_path = tag_test_dir_path / handler_filename
-                self.file_writer.create_directory(str(handler_test_file_dir_path))
+                self._create_directory(str(handler_test_file_dir_path))
                 handler_test_file = handler_filename + "_test" + file_ext
                 handler_test_file_path = handler_test_file_dir_path / handler_test_file
                 test_content = ""
                 # test_content = self._generate_tests(tag, operations)
-                self.file_writer.write(str(handler_test_file_path), test_content)
+                self._write_and_format(str(handler_test_file_path), test_content)
 
         tag_metadata: List[OpenAPITagMetadata] = []
         for tag in self.metadata.tags:
@@ -335,7 +331,7 @@ class SDKGenerator:
             operation_metadata = operation_metadata_by_tag[tag_name]
             tag_dir_path = src_dir / tag_dir
             tag_test_dir_path = test_dir / tag_dir
-            self.file_writer.create_directory(str(tag_dir_path))
+            self._create_directory(str(tag_dir_path))
             tag_file = tag_filename + file_ext
             tag_file_path = tag_dir_path / tag_file
             tag_class_content = self._generate_tag_class(
@@ -345,7 +341,7 @@ class SDKGenerator:
                 tag_description,
                 operation_metadata,
             )
-            self.file_writer.write(str(tag_file_path), tag_class_content)
+            self._write_and_format(str(tag_file_path), tag_class_content)
             tag_metadata.append(
                 OpenAPITagMetadata(
                     tag=tag_name,
@@ -358,7 +354,7 @@ class SDKGenerator:
             )
 
             if self.generate_tests:
-                self.file_writer.create_directory(str(tag_test_dir_path))
+                self._create_directory(str(tag_test_dir_path))
 
         # Generate base client
         sdk_class_file = sdk_class_filename + file_ext
@@ -366,7 +362,9 @@ class SDKGenerator:
         sdk_class_content = self._generate_sdk_class(
             parent_class_name=parent_class_name, tag_metadata=tag_metadata
         )
-        self.file_writer.write(str(sdk_class_file_path), sdk_class_content)
+        self._write_and_format(str(sdk_class_file_path), sdk_class_content)
+
+        Helpers.run_ruff_on_path(self.output_dir)
 
         # Generate requirements.txt
         requirements_path = self.output_dir / "requirements.txt"
@@ -375,7 +373,7 @@ class SDKGenerator:
 
         # TODO: needs to be re-implemented
         # Generate README
-        readme_path = self.output_dir / "README.md"
+        # readme_path = self.output_dir / "README.md"
         # readme_content = self._generate_readme(operations_by_tag)
         # self.file_writer.write(str(readme_path), readme_content)
 
@@ -387,6 +385,7 @@ class SDKGenerator:
         # Add x-codeSamples to OpenAPI content
         if self.generate_x_code_samples:
             openapi_content = self._generate_x_code_samples(
+                openapi_content=openapi_content,
                 handler_file_paths_by_operation_id=handler_file_paths_by_operation_id,
                 file_ext=file_ext,
             )

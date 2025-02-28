@@ -2,10 +2,8 @@
 
 import json
 import yaml
-from pathlib import Path
-from typing import Dict, Union, Optional, Any
+from typing import Dict, Any
 from urllib.request import urlopen
-from urllib.error import URLError
 
 from .path_validator import PathValidator
 

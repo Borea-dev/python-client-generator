@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from typing import List, Optional
 import fnmatch
@@ -91,7 +90,7 @@ class ConfigurableFileWriter:
         return True
 
     def generate_python_models(
-        self, models_dir: str, models_file_path: str, openapi_input: str
+        self, models_dir: str, models_file: str, openapi_input: str
     ) -> bool:
         """
         Generate Python models using datamodel-codegen.
@@ -111,10 +110,12 @@ class ConfigurableFileWriter:
         if not self.create_directory(models_dir):
             return False
 
-        models_path = Path(models_dir) / models_file_path
-        if self.should_ignore(str(models_path)):
-            click.echo(f"Skipping model generation: {models_path} is ignored")
+        models_file_path = Path(models_dir) / models_file
+        if self.should_ignore(str(models_file_path)):
+            click.echo(f"Skipping model generation: {models_file_path} is ignored")
             return False
+
+        self.write(str(Path(models_dir) / "__init__.py"), "")
 
         import subprocess
 
@@ -125,7 +126,7 @@ class ConfigurableFileWriter:
             "--input",
             str(openapi_input),
             "--output",
-            str(models_path),
+            str(models_file_path),
             "--use-standard-collections",
             "--use-schema-description",
             "--field-constraints",
