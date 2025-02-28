@@ -1,0 +1,38 @@
+name: Python Code Quality
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    lint:
+        name: Run Ruff and pycompile
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.x"
+
+            - name: Install Ruff
+              run: pip install ruff
+
+            # - name: Run Ruff Check
+            #   run: ruff check .
+
+            - name: Run Ruff Fix
+              run: ruff check --fix .
+
+            - name: Run Ruff Format
+              run: ruff format .
+
+            - name: Verify Code Compiles
+              run: find . -name "*.py" -exec python -m py_compile {} +
