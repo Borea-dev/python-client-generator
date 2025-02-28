@@ -8,7 +8,7 @@ exclude = [".gitignore"]
 
 [project]
 name = "borea_python"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="David Bauch", email="pypi@borea.dev" },
 ]
