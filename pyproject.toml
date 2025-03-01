@@ -1,6 +1,6 @@
 [project]
 name = "borea_python"
-version = "1.0.4"
+version = "1.0.5"
 authors = [
   { name="David Bauch", email="pypi@borea.dev" },
 ]
@@ -13,7 +13,7 @@ dependencies = [
     "datamodel-code-generator>=0.28.0,<1.0.0",
     "httpx>=0.20.0,<0.28.0",
     "jinja2>=3.0.0,<4.0.0",
-    "pydantic>=2.1.1,<2.7.0",
+    "pydantic>=2.0.0,<3.0.0",
     "PyYAML>=6.0,<7.0",
     "ruff>=0.2,<0.3",
 ]
