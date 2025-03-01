@@ -48,13 +48,13 @@ source .venv/bin/activate
 # Install or reinstall dependencies
 if [ "$REINSTALL" = true ]; then
     echo "Reinstalling all dependencies..."
-    pip install --force-reinstall -r src/requirements.txt
+    pip install --force-reinstall .
     echo "Dependencies reinstalled successfully"
-elif [ -f "src/requirements.txt" ]; then
-    pip install -r src/requirements.txt
+elif [ -f "pyproject.toml" ]; then
+    pip install -e .
     echo "Dependencies installed successfully"
 else
-    echo "Error: src/requirements.txt not found"
+    echo "Error: pyproject.toml not found"
     exit 1
 fi
 
