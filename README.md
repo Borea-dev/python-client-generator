@@ -125,7 +125,7 @@ Run the automated setup script:
 _`source` is required to activate the virtual environment_
 
 ```bash
-source ./setup.sh
+source ./setup-venv.sh
 ```
 
 This script will:
@@ -137,7 +137,7 @@ This script will:
 Available options:
 
 ```bash
-setup.sh [OPTIONS]
+setup-venv.sh [OPTIONS]
 
 Options:
   -r, --recreate    Recreate virtual environment (deletes existing .venv)
