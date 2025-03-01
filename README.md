@@ -40,7 +40,7 @@ For info on cloning and installing manually read [**Manual Install**](#manual-in
 2. Run the SDK generator after configuration:
 
 ```bash
-python borea-python [OPTIONS]
+python -m borea_python.cli [OPTIONS]
 ```
 
 The generator will create the Python HTTP client SDK based on the OpenAPI specification.
@@ -77,8 +77,7 @@ The project uses `borea.config.json` for configuration settings. Example config 
 Show this help message with `--help`:
 
 ```bash
-Usage: python borea-python
-           [OPTIONS]
+Usage: python -m borea_python.cli [OPTIONS]
 
   Generate a Python SDK from an OpenAPI specification.
 
