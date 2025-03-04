@@ -1,11 +1,10 @@
 """Module for handling content loading from URLs and files."""
 
 import json
-import yaml
-from pathlib import Path
-from typing import Dict, Union, Optional, Any
+from typing import Any, Dict
 from urllib.request import urlopen
-from urllib.error import URLError
+
+import yaml
 
 from .path_validator import PathValidator
 

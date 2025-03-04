@@ -1,6 +1,6 @@
 from typing import List
+
 from pydantic import BaseModel
-from ...openapi_parser.models import HttpParameter, SchemaMetadata
 
 
 class OperationMetadata(BaseModel):

@@ -1,9 +1,8 @@
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-from ..openapi_parser.models import HttpParameter, SchemaMetadata
-
 from .helpers import Helpers
 from .models.handler_class_models import MethodParameter
+from .models.openapi_models import HttpParameter, SchemaMetadata
 
 
 class GenerateMethodMetadata:
@@ -49,9 +48,10 @@ class GenerateMethodMetadata:
     ) -> List[MethodParameter]:
         default_description = "No description provided"
         schema_required = schema.get("required", [])
-        is_required = lambda prop_name, prop: prop_name in schema_required or prop.get(
-            "required", False
-        )
+
+        def is_required(prop_name, prop):
+            return prop_name in schema_required or prop.get("required", False)
+
         return [
             MethodParameter(
                 required=is_required(prop_name, prop),
@@ -89,12 +89,12 @@ class GenerateMethodMetadata:
         )
         required_http_params: List[MethodParameter] = (
             cls._method_params_from_http_params(
-                parameters, lambda http_param: http_param.required == True
+                parameters, lambda http_param: http_param.required
             )
         )
         optional_http_params: List[MethodParameter] = (
             cls._method_params_from_http_params(
-                parameters, lambda http_param: http_param.required != True
+                parameters, lambda http_param: not http_param.required
             )
         )
         http_param_names = [param.name for param in parameters]

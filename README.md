@@ -4,71 +4,34 @@ Please learn more about Borea and our mission at [borea.dev](https://borea.dev) 
 
 This repository contains a Python HTTP client SDK generator. It generates a Python client from an OpenAPI specification.
 
-## Setup
+## Table of Contents
+
+-   [Getting Started](#getting-started)
+-   [Installation](#installation)
+-   [Usage](#usage)
+-   [Running Tests](#running-tests)
+-   [Project Structure](#project-structure)
+-   [Manual Install](#manual-install)
+-   [License](#license)
+
+## Getting Started <a id="getting-started"></a>
 
 ### Prerequisites
 
 -   Python 3.8 or higher
 -   pip (Python package installer)
 
-### Quick Setup (Recommended)
+### Installation <a id="installation"></a>
 
-Run the automated setup script:
-
-_`source` is required to activate the virtual environment_
+Available as [borea-python](https://pypi.org/project/borea-python/) on PyPI.
 
 ```bash
-source ./setup.sh
+pip install borea-python
 ```
 
-This script will:
+For info on cloning and installing manually read [**Manual Install**](#manual-install).
 
-1. Create a Python virtual environment (`.venv`)
-2. Activate the virtual environment
-3. Install all required dependencies
-
-Available options:
-
-```bash
-setup.sh [OPTIONS]
-
-Options:
-  -r, --recreate    Recreate virtual environment (deletes existing .venv)
-  -i, --reinstall   Reinstall all requirements
-  -h, --help        Show this help message
-```
-
-### Manual Setup
-
-If you prefer to set up manually, follow these steps:
-
-1. Create a virtual environment:
-
-```bash
-python -m venv .venv
-```
-
-2. Activate the virtual environment:
-
--   On macOS/Linux:
-
-```bash
-source .venv/bin/activate
-```
-
--   On Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-3. Install the package dependencies:
-
-```bash
-pip install -r src/requirements.txt
-```
-
-## Usage
+## Usage <a id="usage"></a>
 
 ### Running the Python SDK Generator
 
@@ -77,7 +40,7 @@ pip install -r src/requirements.txt
 2. Run the SDK generator after configuration:
 
 ```bash
-python -m src.python_sdk_generator.python_sdk_generator
+python -m borea_python.cli [OPTIONS]
 ```
 
 The generator will create the Python HTTP client SDK based on the OpenAPI specification.
@@ -114,8 +77,7 @@ The project uses `borea.config.json` for configuration settings. Example config 
 Show this help message with `--help`:
 
 ```bash
-Usage: python -m src.python_sdk_generator.python_sdk_generator
-           [OPTIONS]
+Usage: python -m borea_python.cli [OPTIONS]
 
   Generate a Python SDK from an OpenAPI specification.
 
@@ -132,7 +94,7 @@ Options:
   --help                     Show this message and exit.
 ```
 
-## Running Tests
+## Running Tests <a id="running-tests"></a>
 
 **To be implemented...**
 
@@ -142,13 +104,46 @@ To run the test suite:
 python -m pytest
 ```
 
-## Project Structure
+## Project Structure <a id="project-structure"></a>
 
 -   `src/` - Contains the source code for the SDK generator
 -   `openapi.json` - OpenAPI specification file or wherever you decide to put it
 -   `borea.config.json` - Configuration file for the generator
 -   `.venv/` - Python virtual environment (created during setup)
 
-## License
+## Manual Install <a id="manual-install"></a>
+
+### Clone repo
+
+```bash
+git clone https://github.com/Borea-dev/python-client-generator.git
+```
+
+Run the automated setup script:
+
+_`source` is required to activate the virtual environment_
+
+```bash
+source ./setup-venv.sh
+```
+
+This script will:
+
+1. Create a Python virtual environment (`.venv`)
+2. Activate the virtual environment
+3. Install all required dependencies
+
+Available options:
+
+```bash
+setup-venv.sh [OPTIONS]
+
+Options:
+  -r, --recreate    Recreate virtual environment (deletes existing .venv)
+  -i, --reinstall   Reinstall all requirements
+  -h, --help        Show this help message
+```
+
+## License <a id="license"></a>
 
 This project is licensed under the terms specified in the LICENSE file.

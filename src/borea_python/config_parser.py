@@ -1,9 +1,8 @@
-import os
-from typing import List, Optional, Union
+from typing import List, Optional
+
 import click
 
-from ..path_validator import PathValidator
-from ..content_loader import ContentLoader, ContentLoadError
+from .content_loader import ContentLoader, ContentLoadError
 from .models.borea_config_models import (
     BoreaConfig,
     BoreaConfigJSON,
@@ -11,6 +10,7 @@ from .models.borea_config_models import (
     InputConfigJSON,
     OutputConfig,
 )
+from .path_validator import PathValidator
 
 
 class ConfigError(Exception):

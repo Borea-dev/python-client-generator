@@ -1,10 +1,10 @@
 """Module for validating URLs and file paths."""
 
 import os
+from typing import Tuple, Union
+from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import urlopen
-from urllib.error import URLError
-from typing import Tuple, Union
 
 
 class PathValidator:

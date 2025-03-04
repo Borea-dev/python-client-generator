@@ -1,5 +1,6 @@
-from typing import Dict, Any
-from pydantic import BaseModel, Field
+from typing import Any, Dict
+
+from pydantic import BaseModel
 
 
 class SchemaPyJinja(BaseModel):
