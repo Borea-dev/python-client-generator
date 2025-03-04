@@ -53,12 +53,12 @@ class SDKGenerator:
         tag_filename = tag_dir
         return tag_dir, tag_class_name, tag_filename
 
-    def _generate_models(self, models_filename: str, file_ext: str):
+    def _generate_models(self, models_dir: str, models_filename: str, file_ext: str):
         """Generate Pydantic models using datamodel-code-generator"""
         openapi_input = self.metadata.openapi_input
         models_file = models_filename + file_ext
         self.file_writer.generate_python_models(
-            models_dir=str(self.models_dir),
+            models_dir=models_dir,
             models_file=models_file,
             openapi_input=openapi_input,
         )
@@ -69,6 +69,8 @@ class SDKGenerator:
         parent_class_name: str,
         parent_filename: str,
         operation_metadata: OperationMetadata,
+        models_dir: str,
+        models_filename: str,
     ) -> str:
         """Generate the handler for a specific path / operation in OpenAPI"""
         op = operation
@@ -83,10 +85,14 @@ class SDKGenerator:
 
         http_params = op.parameters
         request_body = op.request_body
-        schema, required_method_params, optional_method_params = (
-            GenerateMethodMetadata.resolve_method_params(op.parameters, op.request_body)
-        )
+        (
+            schema,
+            required_method_params,
+            optional_method_params,
+        ) = GenerateMethodMetadata.resolve_method_params(op.parameters, op.request_body)
         handler_metadata = HandlerClassPyJinja(
+            models_dir=models_dir,
+            models_filename=models_filename,
             parent_class_name=parent_class_name,
             parent_filename=parent_filename,
             class_name=operation_metadata.handler_class_name,
@@ -112,8 +118,12 @@ class SDKGenerator:
         tag_class_name: str,
         tag_description: str,
         operation_metadata: List[OperationMetadata],
+        models_dir: str,
+        models_filename: str,
     ) -> str:
         template_metadata = TagClassPyJinja(
+            models_dir=models_dir,
+            models_filename=models_filename,
             parent_class_name=parent_class_name,
             parent_filename=sdk_class_filename,
             class_name=tag_class_name,
@@ -126,12 +136,18 @@ class SDKGenerator:
         )
 
     def _generate_sdk_class(
-        self, parent_class_name: str, tag_metadata: List[OpenAPITagMetadata]
+        self,
+        parent_class_name: str,
+        tag_metadata: List[OpenAPITagMetadata],
+        models_dir: str,
+        models_filename: str,
     ) -> str:
         """Generate the base class for methods of tag in OpenAPI"""
         base_url = self.metadata.servers and self.metadata.servers[0].url or ""
         http_headers = self.metadata.headers
         template_metadata = SdkClassPyJinja(
+            models_dir=models_dir,
+            models_filename=models_filename,
             class_name=parent_class_name,
             class_title=self.metadata.info.title,
             class_description=self.metadata.info.description,
@@ -260,8 +276,13 @@ class SDKGenerator:
         self.file_writer.create_directory(str(self.output_dir) or sdk_class_filename)
 
         # Generate models
+        models_dir_name = str(self.models_dir).split("/")[-1]
         models_filename = "models"
-        self._generate_models(models_filename=models_filename, file_ext=file_ext)
+        self._generate_models(
+            models_dir=str(self.models_dir),
+            models_filename=models_filename,
+            file_ext=file_ext,
+        )
 
         # Generate schema files
         self._generate_schema_files(models_filename=models_filename, file_ext=file_ext)
@@ -296,7 +317,12 @@ class SDKGenerator:
                 handler_class_name=handler_class_name,
             )
             operation_handler_content = self._generate_handler_class(
-                op, parent_class_name, sdk_class_filename, operation_metadata
+                operation=op,
+                parent_class_name=parent_class_name,
+                parent_filename=sdk_class_filename,
+                operation_metadata=operation_metadata,
+                models_dir=models_dir_name,
+                models_filename=models_filename,
             )
             handler_file_paths_by_operation_id[op.operation_id] = str(handler_file_path)
             self._write_and_format(str(handler_file_path), operation_handler_content)
@@ -330,11 +356,13 @@ class SDKGenerator:
             tag_file = tag_filename + file_ext
             tag_file_path = tag_dir_path / tag_file
             tag_class_content = self._generate_tag_class(
-                parent_class_name,
-                sdk_class_filename,
-                tag_class_name,
-                tag_description,
-                operation_metadata,
+                parent_class_name=parent_class_name,
+                sdk_class_filename=sdk_class_filename,
+                tag_class_name=tag_class_name,
+                tag_description=tag_description,
+                operation_metadata=operation_metadata,
+                models_dir=models_dir_name,
+                models_filename=models_filename,
             )
             self._write_and_format(str(tag_file_path), tag_class_content)
             tag_metadata.append(
@@ -355,11 +383,14 @@ class SDKGenerator:
         sdk_class_file = sdk_class_filename + file_ext
         sdk_class_file_path = src_dir / sdk_class_file
         sdk_class_content = self._generate_sdk_class(
-            parent_class_name=parent_class_name, tag_metadata=tag_metadata
+            parent_class_name=parent_class_name,
+            tag_metadata=tag_metadata,
+            models_dir=models_dir_name,
+            models_filename=models_filename,
         )
         self._write_and_format(str(sdk_class_file_path), sdk_class_content)
 
-        Helpers.run_ruff_on_path(self.output_dir)
+        Helpers.run_ruff_on_path(str(self.output_dir))
 
         # TODO: move to pyproject.toml for easy SDK PyPi packaging
         # Generate requirements.txt

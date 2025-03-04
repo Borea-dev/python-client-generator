@@ -130,7 +130,6 @@ class Helpers:
                 ["ruff", command, path],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                check=True,
             )
 
         try:

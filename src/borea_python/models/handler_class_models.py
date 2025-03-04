@@ -18,6 +18,8 @@ class MethodParameter(BaseModel):
 class HandlerClassPyJinja(BaseModel):
     """Represent the data necessary to generate method"""
 
+    models_dir: str
+    models_filename: str
     parent_class_name: str
     parent_filename: str
     class_name: str

@@ -2,7 +2,7 @@
 
 {% block content %}
 from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
-from ...models.models import *
+from ...{{ models_dir }}.{{ models_filename }} import *
 {% for op_metadata in operation_metadata  %}
 from .{{ op_metadata.handler_dir }}.{{ op_metadata.handler_filename }} import {{ op_metadata.handler_class_name }}
 {%- endfor %}

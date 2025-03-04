@@ -4,7 +4,8 @@
 # TODO: not implemented
 
 from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
-from ....models.models import *
+# TODO: use models output dir
+from ....{{ models_dir }}.{{ models_filename }} import *
 
 if TYPE_CHECKING:
     from ...{{ parent_filename }} import {{ parent_class_name }}

@@ -19,6 +19,8 @@ class OpenAPITagMetadata(BaseModel):
 class SdkClassPyJinja(BaseModel):
     """Represents the data the sdk_class.py.jinja template needs"""
 
+    models_dir: str
+    models_filename: str
     class_name: str
     class_title: str
     class_description: str
