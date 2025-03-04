@@ -2,6 +2,7 @@
 *borea.config.json
 !*example*.json
 generated_sdk
+uv.lock
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
