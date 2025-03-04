@@ -50,20 +50,20 @@ class SiloCreate:
         params = None
         headers = None
         json_data = {
-            "admin_group_name": (
-                admin_group_name if admin_group_name is not None else None
-            ),
+            "admin_group_name": admin_group_name
+            if admin_group_name is not None
+            else None,
             "description": description if description is not None else None,
             "discoverable": discoverable if discoverable is not None else None,
             "identity_mode": identity_mode if identity_mode is not None else None,
-            "mapped_fleet_roles": (
-                mapped_fleet_roles if mapped_fleet_roles is not None else None
-            ),
+            "mapped_fleet_roles": mapped_fleet_roles
+            if mapped_fleet_roles is not None
+            else None,
             "name": name if name is not None else None,
             "quotas": quotas if quotas is not None else None,
-            "tls_certificates": (
-                tls_certificates if tls_certificates is not None else None
-            ),
+            "tls_certificates": tls_certificates
+            if tls_certificates is not None
+            else None,
         }
         json_data = {k: v for k, v in json_data.items() if v is not None}
 

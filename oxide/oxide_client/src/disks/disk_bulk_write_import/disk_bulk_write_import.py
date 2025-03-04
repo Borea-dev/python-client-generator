@@ -40,9 +40,9 @@ class DiskBulkWriteImport:
         if project is not None:
             params["project"] = project
         json_data = {
-            "base64_encoded_data": (
-                base64_encoded_data if base64_encoded_data is not None else None
-            ),
+            "base64_encoded_data": base64_encoded_data
+            if base64_encoded_data is not None
+            else None,
             "offset": offset if offset is not None else None,
         }
         json_data = {k: v for k, v in json_data.items() if v is not None}

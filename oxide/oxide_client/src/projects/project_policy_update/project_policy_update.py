@@ -34,9 +34,9 @@ class ProjectPolicyUpdate:
         params = {}
         headers = {}
         json_data = {
-            "role_assignments": (
-                role_assignments if role_assignments is not None else None
-            ),
+            "role_assignments": role_assignments
+            if role_assignments is not None
+            else None,
         }
         json_data = {k: v for k, v in json_data.items() if v is not None}
 

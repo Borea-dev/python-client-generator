@@ -44,9 +44,9 @@ class InstanceUpdate:
         if project is not None:
             params["project"] = project
         json_data = {
-            "auto_restart_policy": (
-                auto_restart_policy if auto_restart_policy is not None else None
-            ),
+            "auto_restart_policy": auto_restart_policy
+            if auto_restart_policy is not None
+            else None,
             "boot_disk": boot_disk if boot_disk is not None else None,
             "memory": memory if memory is not None else None,
             "ncpus": ncpus if ncpus is not None else None,

@@ -56,20 +56,20 @@ class SamlIdentityProviderCreate:
         json_data = {
             "acs_url": acs_url if acs_url is not None else None,
             "description": description if description is not None else None,
-            "group_attribute_name": (
-                group_attribute_name if group_attribute_name is not None else None
-            ),
+            "group_attribute_name": group_attribute_name
+            if group_attribute_name is not None
+            else None,
             "idp_entity_id": idp_entity_id if idp_entity_id is not None else None,
-            "idp_metadata_source": (
-                idp_metadata_source if idp_metadata_source is not None else None
-            ),
+            "idp_metadata_source": idp_metadata_source
+            if idp_metadata_source is not None
+            else None,
             "name": name if name is not None else None,
             "signing_keypair": signing_keypair if signing_keypair is not None else None,
             "slo_url": slo_url if slo_url is not None else None,
             "sp_client_id": sp_client_id if sp_client_id is not None else None,
-            "technical_contact_email": (
-                technical_contact_email if technical_contact_email is not None else None
-            ),
+            "technical_contact_email": technical_contact_email
+            if technical_contact_email is not None
+            else None,
         }
         json_data = {k: v for k, v in json_data.items() if v is not None}
 

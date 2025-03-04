@@ -59,14 +59,14 @@ class NetworkingSwitchPortLldpConfigUpdate:
             "chassis_id": chassis_id if chassis_id is not None else None,
             "enabled": enabled if enabled is not None else None,
             "id": id if id is not None else None,
-            "link_description": (
-                link_description if link_description is not None else None
-            ),
+            "link_description": link_description
+            if link_description is not None
+            else None,
             "link_name": link_name if link_name is not None else None,
             "management_ip": management_ip if management_ip is not None else None,
-            "system_description": (
-                system_description if system_description is not None else None
-            ),
+            "system_description": system_description
+            if system_description is not None
+            else None,
             "system_name": system_name if system_name is not None else None,
         }
         json_data = {k: v for k, v in json_data.items() if v is not None}

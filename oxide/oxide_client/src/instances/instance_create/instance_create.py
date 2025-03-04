@@ -66,9 +66,9 @@ class InstanceCreate:
         if project is not None:
             params["project"] = project
         json_data = {
-            "auto_restart_policy": (
-                auto_restart_policy if auto_restart_policy is not None else None
-            ),
+            "auto_restart_policy": auto_restart_policy
+            if auto_restart_policy is not None
+            else None,
             "boot_disk": boot_disk if boot_disk is not None else None,
             "description": description if description is not None else None,
             "disks": disks if disks is not None else None,
@@ -77,9 +77,9 @@ class InstanceCreate:
             "memory": memory if memory is not None else None,
             "name": name if name is not None else None,
             "ncpus": ncpus if ncpus is not None else None,
-            "network_interfaces": (
-                network_interfaces if network_interfaces is not None else None
-            ),
+            "network_interfaces": network_interfaces
+            if network_interfaces is not None
+            else None,
             "ssh_public_keys": ssh_public_keys if ssh_public_keys is not None else None,
             "start": start if start is not None else None,
             "user_data": user_data if user_data is not None else None,

@@ -41,9 +41,9 @@ class NetworkingBgpConfigCreate:
         headers = None
         json_data = {
             "asn": asn if asn is not None else None,
-            "bgp_announce_set_id": (
-                bgp_announce_set_id if bgp_announce_set_id is not None else None
-            ),
+            "bgp_announce_set_id": bgp_announce_set_id
+            if bgp_announce_set_id is not None
+            else None,
             "description": description if description is not None else None,
             "name": name if name is not None else None,
             "vrf": vrf if vrf is not None else None,

@@ -42,9 +42,9 @@ class NetworkingBfdEnable:
         params = None
         headers = None
         json_data = {
-            "detection_threshold": (
-                detection_threshold if detection_threshold is not None else None
-            ),
+            "detection_threshold": detection_threshold
+            if detection_threshold is not None
+            else None,
             "local": local if local is not None else None,
             "mode": mode if mode is not None else None,
             "remote": remote if remote is not None else None,
