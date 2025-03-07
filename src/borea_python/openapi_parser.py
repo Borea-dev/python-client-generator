@@ -260,11 +260,10 @@ class OpenAPIParser:
 
 @click.command()
 @click.option(
-    "--input",
-    "input_file",
-    default="openapi.json",
-    type=click.Path(exists=True),
-    help="OpenAPI specification file (JSON or YAML)",
+    "--openapi-input",
+    "-i",
+    help="Path to OpenAPI specification file or URL",
+    type=str,
 )
 @click.option(
     "--tag",
@@ -276,10 +275,10 @@ class OpenAPIParser:
     default="",
     type=str,
 )
-def main(input_file, tag, operation_id):
-    parser = OpenAPIParser(input_file, tag=tag, operation_id=operation_id)
+def main(openapi_input: str, tag: str, operation_id: str):
+    parser = OpenAPIParser(openapi_input, tag=tag, operation_id=operation_id)
     operations = parser.parse()
-    click.echo("Path Operations:", json.dumps(operations.model_dump(), indent=2))
+    click.echo(json.dumps(operations.model_dump(), indent=2))
 
 
 if __name__ == "__main__":

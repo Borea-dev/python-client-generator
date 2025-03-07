@@ -1,8 +1,9 @@
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .openapi_models import HttpHeader
+from .tag_class_models import OperationMetadata
 
 
 class OpenAPITagMetadata(BaseModel):
@@ -25,5 +26,6 @@ class SdkClassPyJinja(BaseModel):
     class_title: str
     class_description: str
     base_url: str
-    http_headers: List[HttpHeader]
-    tags: List[OpenAPITagMetadata]
+    http_headers: List[HttpHeader] = Field(default_factory=list)
+    tags: List[OpenAPITagMetadata] = Field(default_factory=list)
+    operation_metadata: List[OperationMetadata] = Field(default_factory=list)

@@ -7,6 +7,9 @@ from ..{{ models_dir }}.{{ models_filename }} import *
 {% for tag in tags  %}
 from .{{ tag.tag_dir }}.{{ tag.tag_filename }} import {{ tag.tag_class_name }}
 {%- endfor %}
+{% for op_metadata in operation_metadata  %}
+from .{{ op_metadata.handler_dir }}.{{ op_metadata.handler_filename }} import {{ op_metadata.handler_class_name }}
+{%- endfor %}
 
 class {{ class_name }}:
     def __init__(
@@ -43,6 +46,9 @@ class {{ class_name }}:
         {%- endfor %}
         {% for tag in tags%}
         self.{{ tag.tag_prop_name }} = {{ tag.tag_class_name }}(parent=self)
+        {%- endfor %}
+        {% for op_metadata in operation_metadata  %}
+        self.{{ op_metadata.handler_filename }} = {{ op_metadata.handler_class_name }}(parent=self).{{ op_metadata.handler_filename }}
         {%- endfor %}
 
     def _make_request(

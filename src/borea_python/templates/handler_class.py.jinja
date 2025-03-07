@@ -5,10 +5,18 @@
 
 from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 # TODO: use models output dir
+{% if is_operation_without_tag %}
+from ...{{ models_dir }}.{{ models_filename }} import *
+{% else %}
 from ....{{ models_dir }}.{{ models_filename }} import *
+{% endif %}
 
 if TYPE_CHECKING:
+    {% if is_operation_without_tag %}
+    from ..{{ parent_filename }} import {{ parent_class_name }}
+    {% else %}
     from ...{{ parent_filename }} import {{ parent_class_name }}
+    {% endif %}
 
 class {{ class_name }}:
     def __init__(

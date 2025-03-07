@@ -22,6 +22,7 @@ class HandlerClassPyJinja(BaseModel):
     models_filename: str
     parent_class_name: str
     parent_filename: str
+    is_operation_without_tag: bool
     class_name: str
     method_name: str
     description: str

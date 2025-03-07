@@ -50,7 +50,7 @@ class ContentLoader:
         except Exception as e:
             raise ContentLoadError(f"Failed to load content from {path}: {str(e)}")
 
-    def load_structured_data(self, path: str) -> Any:
+    def load_structured_data(self, path: str) -> Dict[str, Any]:
         """
         Load and parse structured data (JSON or YAML) from a URL or file path.
 

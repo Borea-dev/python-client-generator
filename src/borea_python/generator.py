@@ -68,6 +68,7 @@ class SDKGenerator:
         operation: Operation,
         parent_class_name: str,
         parent_filename: str,
+        is_operation_without_tag: bool,
         operation_metadata: OperationMetadata,
         models_dir: str,
         models_filename: str,
@@ -95,6 +96,7 @@ class SDKGenerator:
             models_filename=models_filename,
             parent_class_name=parent_class_name,
             parent_filename=parent_filename,
+            is_operation_without_tag=is_operation_without_tag,
             class_name=operation_metadata.handler_class_name,
             method_name=operation_metadata.handler_filename,
             description=op.description,
@@ -139,6 +141,7 @@ class SDKGenerator:
         self,
         parent_class_name: str,
         tag_metadata: List[OpenAPITagMetadata],
+        operations_without_tags: List[OperationMetadata],
         models_dir: str,
         models_filename: str,
     ) -> str:
@@ -154,6 +157,7 @@ class SDKGenerator:
             base_url=base_url,
             http_headers=http_headers,
             tags=tag_metadata,
+            operation_metadata=operations_without_tags,
         ).model_dump()
 
         return self._render_code(
@@ -303,6 +307,7 @@ class SDKGenerator:
             operation_id = op.operation_id
             tag_name = op.tag
             tag_dir, tag_class_name, tag_filename = self._get_tag_formats(tag_name)
+            is_operation_without_tag = tag_name == ""
             tag_dir_path = src_dir / tag_dir
             handler_filename = operation_id
             handler_dir = handler_filename
@@ -320,6 +325,7 @@ class SDKGenerator:
                 operation=op,
                 parent_class_name=parent_class_name,
                 parent_filename=sdk_class_filename,
+                is_operation_without_tag=is_operation_without_tag,
                 operation_metadata=operation_metadata,
                 models_dir=models_dir_name,
                 models_filename=models_filename,
@@ -380,14 +386,18 @@ class SDKGenerator:
                 self._create_directory(str(tag_test_dir_path))
 
         # Generate base client
-        sdk_class_file = sdk_class_filename + file_ext
-        sdk_class_file_path = src_dir / sdk_class_file
+        operations_without_tags: List[
+            OperationMetadata
+        ] = operation_metadata_by_tag.get("", [])
         sdk_class_content = self._generate_sdk_class(
             parent_class_name=parent_class_name,
             tag_metadata=tag_metadata,
+            operations_without_tags=operations_without_tags,
             models_dir=models_dir_name,
             models_filename=models_filename,
         )
+        sdk_class_file = sdk_class_filename + file_ext
+        sdk_class_file_path = src_dir / sdk_class_file
         self._write_and_format(str(sdk_class_file_path), sdk_class_content)
 
         Helpers.run_ruff_on_path(str(self.output_dir))
@@ -408,7 +418,9 @@ class SDKGenerator:
         # Load OpenAPI content
         openapi_file = self.output_dir / "openapi.json"
         content_loader = ContentLoader()
-        openapi_content = content_loader.load_json(self.metadata.openapi_input)
+        openapi_content = content_loader.load_structured_data(
+            self.metadata.openapi_input
+        )
         # Add x-codeSamples to OpenAPI content
         if self.generate_x_code_samples:
             openapi_content = self._generate_x_code_samples(
