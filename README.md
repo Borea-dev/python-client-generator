@@ -35,12 +35,25 @@ For info on cloning and installing manually read [**Manual Install**](#manual-in
 
 ### Running the Python SDK Generator
 
-1. Ensure you have a valid OpenAPI specification file (`openapi.json`) in the root directory. Command line arguments and configuration are detailed below.
+The SDK generator provides two main commands:
 
-2. Run the SDK generator after configuration:
+1. `init` - Creates a new `borea.config.json` configuration file
+2. `generate` - Generates a Python SDK from an OpenAPI specification
+
+If no command is specified, the help message will be displayed.
+
+#### Initialize a new configuration file
 
 ```bash
-python -m borea_python.cli [OPTIONS]
+python -m borea_python.cli init
+```
+
+This will create a new `borea.config.json` file in the current directory with default settings. If the file already exists, you will be prompted to confirm overwriting it.
+
+#### Generate the SDK
+
+```bash
+python -m borea_python.cli generate [OPTIONS]
 ```
 
 The generator will create the Python HTTP client SDK based on the OpenAPI specification.
@@ -74,10 +87,14 @@ The project uses `borea.config.json` for configuration settings. Example config 
 
 ### Command line help
 
-Show this help message with `--help`:
-
 ```bash
-Usage: python -m borea_python.cli [OPTIONS]
+python -m borea_python.cli generate --help
+```
+
+Output:
+
+```
+Usage: python -m borea_python.cli generate [OPTIONS]
 
   Generate a Python SDK from an OpenAPI specification.
 

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -10,7 +11,50 @@ from .models.borea_config_models import BoreaConfig
 from .openapi_parser import OpenAPIParser
 
 
-@click.command()
+@click.group(invoke_without_command=True)
+@click.pass_context
+def cli(ctx) -> None:
+    """Borea Python Client Generator CLI.
+
+    Generate Python SDK clients from OpenAPI specifications.
+    """
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@cli.command(name="init")
+def init() -> None:
+    """Initialize a new Borea configuration file (borea.config.json)."""
+    config_path = Path("borea.config.json")
+
+    # Check if config file already exists
+    if config_path.exists():
+        if not click.confirm(
+            "borea.config.json already exists. Overwrite?", default=False
+        ):
+            click.echo("Initialization cancelled.")
+            return
+
+    # Create default config
+    default_config = {
+        "input": {"openapi": ["openapi.json"]},
+        "output": {
+            "clientSDK": "",
+            "models": "models",
+            "tests": False,
+            "xCodeSamples": False,
+        },
+        "ignores": [],
+    }
+
+    # Write config to file
+    with open(config_path, "w") as f:
+        json.dump(default_config, f, indent=2)
+
+    click.echo(f"Created borea.config.json with default settings.")
+
+
+@cli.command(name="generate")
 @click.option(
     "--openapi-input",
     "-i",
@@ -47,7 +91,7 @@ from .openapi_parser import OpenAPIParser
     help="Path to borea.config.json",
     type=str,
 )
-def main(
+def generate(
     openapi_input: Optional[str],
     sdk_output: Optional[str],
     models_output: Optional[str],
@@ -103,4 +147,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    cli()
