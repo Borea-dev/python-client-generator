@@ -108,16 +108,24 @@ class OpenAPIParser:
         """
         params = []
         for param in parameters:
+            schema = param.get("schema", {})
+            name = param["name"]
+            in_ = param["in"]
+            required = param.get("required", False)
+            type_ = self._resolve_type(schema)
+            nested_json_schema_refs = self._extract_refs(schema)
+            type_is_schema = len(nested_json_schema_refs) > 0
+
+            description = param.get("description", "")
             # "in" is a key word in Python so param_data had to be used
             param_data = {
-                "name": param["name"],
-                "in": param["in"],
-                "required": param.get("required", False),
-                "type": self._resolve_type(param.get("schema", {})),
-                "description": param.get("description", ""),
-                "original_name": param[
-                    "name"
-                ],  # Store the original name before cleaning
+                "name": name,
+                "in": in_,
+                "required": required,
+                "type": type_,
+                "type_is_schema": type_is_schema,
+                "description": description,
+                "original_name": name,  # Store the original name before cleaning
             }
             params.append(HttpParameter(**param_data))
         return params
@@ -144,11 +152,13 @@ class OpenAPIParser:
         json_schema_type = self._resolve_type(schema)
         nested_json_schema_refs = self._extract_refs(schema)
         nested_json_schemas = self._resolve_nested_types(schema)
+        type_is_schema = len(nested_json_schema_refs) > 0
 
         return SchemaMetadata(
             required=required,
             nullable=nullable,
             type=json_schema_type,
+            type_is_schema=type_is_schema,
             nested_json_schema_refs=nested_json_schema_refs,
             nested_json_schemas=nested_json_schemas,
             length_nested_json_schemas=len(nested_json_schemas),
@@ -183,7 +193,7 @@ class OpenAPIParser:
             refs.append(ref_name)
             if ref_name in self.components:
                 refs.extend(self._extract_refs(self.components[ref_name]))
-        for key in ["allOf", "oneOf", "anyOf", "not"]:
+        for key in ["allOf", "oneOf", "anyOf", "not", "properties", "items"]:
             if key in schema:
                 for sub_schema in (
                     schema[key] if isinstance(schema[key], list) else [schema[key]]

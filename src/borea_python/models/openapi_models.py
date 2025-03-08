@@ -11,6 +11,7 @@ class HttpParameter(BaseModel):
     in_location: str = Field(..., alias="in")
     required: bool = False
     type: str
+    type_is_schema: bool
     description: str = ""
     original_name: str = ""  # Store the original parameter name before cleaning
 
@@ -27,6 +28,7 @@ class SchemaMetadata(BaseModel):
     required: Optional[Union[bool, List[str]]] = None
     nullable: Optional[bool] = None
     type: str
+    type_is_schema: bool
     nested_json_schema_refs: List[str] = Field(default_factory=list)
     nested_json_schemas: List[Dict[str, Any]] = Field(default_factory=list)
 

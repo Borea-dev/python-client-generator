@@ -83,58 +83,76 @@ class Helpers:
     @classmethod
     def format_type(cls, type_info: Union[Dict, str, None]) -> str:
         resolved_type: str = "Any"
+        schema_type: str = resolved_type
+        type_is_schema: bool = False
+
+        def set_schema_type_to_resolved_type(value: str):
+            nonlocal resolved_type
+            nonlocal schema_type
+            resolved_type = value
+            schema_type = value
+
         if type_info is None:
             pass
         elif isinstance(type_info, str) and type_info not in ["object", "array"]:
-            resolved_type = cls.clean_type_name(type_info)
+            set_schema_type_to_resolved_type(cls.clean_type_name(type_info))
         elif isinstance(type_info, dict):
+            type_is_schema = type_info.get("type_is_schema", False)
             if "$ref" in type_info:
-                resolved_type = type_info["$ref"].split("/")[-1]
+                set_schema_type_to_resolved_type(type_info["$ref"].split("/")[-1])
             elif type_info.get("type") == "array":
-                resolved_type = f"List[{cls.format_type(type_info.get('items', {}))}]"
+                items = type_info.get("items", {})
+                items_type = cls.format_type(items)[0]
+                resolved_type = f"List[{items_type}]"
+                schema_type = items_type
+                type_is_schema = items.get("type_is_schema", False)
             elif "type" in type_info and type_info["type"] not in ["object", "array"]:
-                resolved_type = cls.clean_type_name(type_info["type"])
+                set_schema_type_to_resolved_type(cls.clean_type_name(type_info["type"]))
             elif "allOf" in type_info:
                 # TODO fix this when it hits
                 # not hitting...
-                resolved_type = " & ".join(
+                value = " & ".join(
                     (
-                        cls.format_type(item)
+                        cls.format_type(item)[0]
                         if isinstance(item, dict) and "$ref" not in item
                         else item["$ref"].split("/")[-1]
                     )
                     for item in type_info["allOf"]
                 )
+                set_schema_type_to_resolved_type(value)
             elif "oneOf" in type_info:
                 # not hitting...
-                resolved_type = f"Union[{', '.join(cls.format_type(item) for item in type_info['oneOf'])}]"
+                value = f"Union[{', '.join(cls.format_type(item)[0] for item in type_info['oneOf'])}]"
+                set_schema_type_to_resolved_type(value)
             elif "anyOf" in type_info:
                 # not hitting...
-                resolved_type = f"Union[{', '.join(cls.format_type(item) for item in type_info['anyOf'])}]"
+                value = f"Union[{', '.join(cls.format_type(item)[0] for item in type_info['anyOf'])}]"
+                set_schema_type_to_resolved_type(value)
             elif "not" in type_info:
                 # not hitting...
-                resolved_type = "Any"
+                set_schema_type_to_resolved_type("Any")
             else:
                 pass
         else:
             pass
 
-        return resolved_type
+        return [resolved_type, schema_type, type_is_schema]
 
     @staticmethod
     def run_ruff_on_path(path: str):
         import subprocess
 
-        def ruff(command: str, path: str):
+        def ruff(*args: str):
             subprocess.run(
-                ["ruff", command, path],
+                ["ruff", *args],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
 
         try:
+            # TODO: get generated code good enough to be fixed
             # Run ruff check (linting)
-            # ruff("check", file_path)
+            ruff("check", "--fix", path)
 
             # Run ruff format (formatting)
             ruff("format", path)

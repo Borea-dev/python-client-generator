@@ -27,17 +27,24 @@ class GenerateMethodMetadata:
         """
         Returns a list of MethodParameter objects based on the given condition.
         """
-        return [
-            MethodParameter(
-                required=http_param.required,
-                name=http_param.name,
-                original_name=http_param.original_name,
-                type=Helpers.format_type(http_param.type),
-                description=http_param.description,
-            )
-            for http_param in http_params
-            if cond(http_param)
-        ]
+        method_params = []
+        for http_param in http_params:
+            if cond(http_param):
+                formatted_type, schema_type, type_is_schema = Helpers.format_type(
+                    http_param.type
+                )
+                method_params.append(
+                    MethodParameter(
+                        required=http_param.required,
+                        name=http_param.name,
+                        original_name=http_param.original_name,
+                        type=formatted_type,
+                        schema_type=schema_type,
+                        type_is_schema=type_is_schema or http_param.type_is_schema,
+                        description=http_param.description,
+                    )
+                )
+        return method_params
 
     @classmethod
     def _method_params_from_schema_props(
@@ -52,28 +59,44 @@ class GenerateMethodMetadata:
         def is_required(prop_name, prop):
             return prop_name in schema_required or prop.get("required", False)
 
-        return [
-            MethodParameter(
-                required=is_required(prop_name, prop),
-                name=prop_name,
-                type=Helpers.format_type(prop),
-                description=prop.get("description", None)
-                or prop.get("nested_json_schemas", [schema])[0].get("description", None)
-                or default_description,
-            )
-            for prop_name, prop in props.items()
-            if cond(prop_name, is_required(prop_name, prop))
-        ]
+        method_params = []
+        for prop_name, prop in props.items():
+            if cond(prop_name, is_required(prop_name, prop)):
+                formatted_type, schema_type, type_is_schema = Helpers.format_type(prop)
+                description = (
+                    prop.get("description", None)
+                    or prop.get("nested_json_schemas", [schema])[0].get(
+                        "description", None
+                    )
+                    or default_description
+                )
+
+                method_params.append(
+                    MethodParameter(
+                        required=is_required(prop_name, prop),
+                        name=prop_name,
+                        type=formatted_type,
+                        schema_type=schema_type,
+                        type_is_schema=type_is_schema
+                        or prop.get("type_is_schema", False),
+                        description=description,
+                    )
+                )
+        return method_params
 
     @classmethod
     def _method_param_from_request_body(
         cls, request_body: Dict[str, Any]
     ) -> List[MethodParameter]:
+        formatted_type, schema_type, type_is_schema = Helpers.format_type(request_body)
         return [
             MethodParameter(
                 required=request_body.get("required", False),
                 name="request_body",
-                type=Helpers.format_type(request_body.get("type", None)),
+                type=formatted_type,
+                schema_type=schema_type,
+                type_is_schema=type_is_schema
+                or request_body.get("type_is_schema", False),
                 description=request_body.get("description", "Request body"),
             )
         ]
@@ -84,21 +107,21 @@ class GenerateMethodMetadata:
     ) -> Tuple[
         Union[Dict[str, Any], None], List[MethodParameter], List[MethodParameter]
     ]:
-        schema: Union[Dict[str, Any], None] = cls._get_single_nested_schema(
-            request_body
+        required_http_params: List[
+            MethodParameter
+        ] = cls._method_params_from_http_params(
+            parameters, lambda http_param: http_param.required
         )
-        required_http_params: List[MethodParameter] = (
-            cls._method_params_from_http_params(
-                parameters, lambda http_param: http_param.required
-            )
-        )
-        optional_http_params: List[MethodParameter] = (
-            cls._method_params_from_http_params(
-                parameters, lambda http_param: not http_param.required
-            )
+        optional_http_params: List[
+            MethodParameter
+        ] = cls._method_params_from_http_params(
+            parameters, lambda http_param: not http_param.required
         )
         http_param_names = [param.name for param in parameters]
 
+        schema: Union[Dict[str, Any], None] = cls._get_single_nested_schema(
+            request_body
+        )
         required_schema_props: List[MethodParameter] = []
         optional_schema_props: List[MethodParameter] = []
         if schema is not None:

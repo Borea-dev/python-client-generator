@@ -3,7 +3,6 @@
 {% block content %}
 from typing import Any, Callable, Dict, Optional
 import httpx
-from ..{{ models_dir }}.{{ models_filename }} import *
 {% for tag in tags  %}
 from .{{ tag.tag_dir }}.{{ tag.tag_filename }} import {{ tag.tag_class_name }}
 {%- endfor %}

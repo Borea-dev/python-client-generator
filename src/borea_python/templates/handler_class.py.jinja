@@ -4,12 +4,10 @@
 # TODO: not implemented
 
 from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
-# TODO: use models output dir
-{% if is_operation_without_tag %}
-from ...{{ models_dir }}.{{ models_filename }} import *
-{% else %}
-from ....{{ models_dir }}.{{ models_filename }} import *
-{% endif %}
+{%- for model_filename in model_filenames -%}
+{# dynamically adjusts between ... and .... #}
+from {{ '.' * (3 if is_operation_without_tag else 4) }}{{ models_dir }}.{{ model_filename }} import {{ model_filename }}
+{%- endfor %}
 
 if TYPE_CHECKING:
     {% if is_operation_without_tag %}

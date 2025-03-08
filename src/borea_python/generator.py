@@ -86,14 +86,23 @@ class SDKGenerator:
 
         http_params = op.parameters
         request_body = op.request_body
+
         (
             schema,
             required_method_params,
             optional_method_params,
         ) = GenerateMethodMetadata.resolve_method_params(op.parameters, op.request_body)
+
+        model_filenames = []
+        for param in required_method_params + optional_method_params:
+            if param.type_is_schema:
+                model_filename = Helpers.clean_schema_name(param.schema_type)
+                model_filenames.append(model_filename)
+
         handler_metadata = HandlerClassPyJinja(
             models_dir=models_dir,
             models_filename=models_filename,
+            model_filenames=model_filenames,
             parent_class_name=parent_class_name,
             parent_filename=parent_filename,
             is_operation_without_tag=is_operation_without_tag,
@@ -400,7 +409,8 @@ class SDKGenerator:
         sdk_class_file_path = src_dir / sdk_class_file
         self._write_and_format(str(sdk_class_file_path), sdk_class_content)
 
-        Helpers.run_ruff_on_path(str(self.output_dir))
+        # TODO: fix models so ruff check --fix doesn't remove imports
+        Helpers.run_ruff_on_path(str(src_dir))
 
         # TODO: move to pyproject.toml for easy SDK PyPi packaging
         # Generate requirements.txt

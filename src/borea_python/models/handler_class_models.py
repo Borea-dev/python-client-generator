@@ -12,6 +12,8 @@ class MethodParameter(BaseModel):
     name: str
     original_name: Optional[str] = None
     type: str
+    schema_type: Optional[str] = None
+    type_is_schema: bool
     description: str
 
 
@@ -20,6 +22,7 @@ class HandlerClassPyJinja(BaseModel):
 
     models_dir: str
     models_filename: str
+    model_filenames: List[str]
     parent_class_name: str
     parent_filename: str
     is_operation_without_tag: bool
