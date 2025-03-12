@@ -29,6 +29,9 @@ class OpenAPIParser:
         self.tag = tag
         self.operation_id = operation_id
         self.openapi_input = openapi_input
+        self.visited_refs = (
+            set()
+        )  # Track visited references to prevent infinite recursion
 
     def parse(self) -> OpenAPIMetadata:
         """
@@ -213,21 +216,28 @@ class OpenAPIParser:
             List of resolved nested type schemas
         """
         nested_types = []
+        if not schema:  # Handle None or empty schema
+            return nested_types
+
         if "type" in schema:
             self._traverse_dict(schema)
             nested_types.append(schema)
+
         if "$ref" in schema:
             ref_name = schema["$ref"].split("/")[-1]
-            if ref_name in self.components:
+            if ref_name in self.components and ref_name not in self.visited_refs:
+                self.visited_refs.add(ref_name)  # Mark as visited
                 nested_types.extend(
                     self._resolve_nested_types(self.components[ref_name])
                 )
+
         for key in ["allOf", "oneOf", "anyOf", "not"]:
             if key in schema:
                 for sub_schema in (
                     schema[key] if isinstance(schema[key], list) else [schema[key]]
                 ):
                     nested_types.extend(self._resolve_nested_types(sub_schema))
+
         return nested_types
 
     def _traverse_dict(

@@ -63,12 +63,14 @@ class GenerateMethodMetadata:
         for prop_name, prop in props.items():
             if cond(prop_name, is_required(prop_name, prop)):
                 formatted_type, schema_type, type_is_schema = Helpers.format_type(prop)
+
+                # Get description with proper fallback handling
+                nested_schemas = prop.get("nested_json_schemas", [schema])
+                first_schema_desc = (
+                    nested_schemas[0].get("description") if nested_schemas else None
+                )
                 description = (
-                    prop.get("description", None)
-                    or prop.get("nested_json_schemas", [schema])[0].get(
-                        "description", None
-                    )
-                    or default_description
+                    prop.get("description") or first_schema_desc or default_description
                 )
 
                 method_params.append(
