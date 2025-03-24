@@ -126,9 +126,7 @@ class ConfigurableFileWriter:
             "--input",
             str(openapi_input),
             "--output",
-            str(
-                models_dir
-            ),  # Output to directory instead of file for modular references
+            str(models_file_path),
             "--use-standard-collections",
             "--use-schema-description",
             "--field-constraints",
@@ -151,19 +149,6 @@ class ConfigurableFileWriter:
 
         try:
             subprocess.run(cmd, check=True)
-            # # After generating models in directory, try to consolidate into a single file if needed
-            # if models_file:
-            #     consolidated_content = []
-            #     for py_file in Path(models_dir).glob("*.py"):
-            #         if py_file.name != "__init__.py" and py_file.name != models_file:
-            #             with open(py_file, "r") as f:
-            #                 content = f.read()
-            #                 consolidated_content.append(content)
-            #                 py_file.unlink()  # Remove individual model files
-
-            #     if consolidated_content:
-            #         with open(models_file_path, "w") as f:
-            #             f.write("\n\n".join(consolidated_content))
             return True
         except subprocess.CalledProcessError as e:
             click.echo(f"Error generating models: {e}")
