@@ -25,7 +25,8 @@ class OpenAPIParser:
         content_loader = ContentLoader()
         self.openapi_spec = content_loader.load_structured_data(str(openapi_input))
         self.paths = self.openapi_spec.get("paths", {})
-        self.components = self.openapi_spec.get("components", {}).get("schemas", {})
+        self.parameters = self.openapi_spec.get("components", {}).get("parameters", {})
+        self.schemas = self.openapi_spec.get("components", {}).get("schemas", {})
         self.tag = tag
         self.operation_id = operation_id
         self.openapi_input = openapi_input
@@ -103,6 +104,13 @@ class OpenAPIParser:
             request_body=self._parse_request_body(details.get("requestBody", {})),
         )
 
+    def _resolve_param_ref(self, param: str) -> Dict[str, Any]:
+        """
+        Resolve a reference to a component in the OpenAPI spec.
+        """
+        schema_name = param["$ref"].split("/")[-1]
+        return self.parameters.get(schema_name, {})
+
     def _parse_parameters(
         self, parameters: List[Dict[str, Any]]
     ) -> List[HttpParameter]:
@@ -111,6 +119,9 @@ class OpenAPIParser:
         """
         params = []
         for param in parameters:
+            # TODO: if param if $ref: #component resolve param
+            if "$ref" in param:
+                param = self._resolve_param_ref(param)
             schema = param.get("schema", {})
             name = param["name"]
             in_ = param["in"]
@@ -194,8 +205,8 @@ class OpenAPIParser:
         if "$ref" in schema:
             ref_name = schema["$ref"].split("/")[-1]
             refs.append(ref_name)
-            if ref_name in self.components:
-                refs.extend(self._extract_refs(self.components[ref_name]))
+            if ref_name in self.schemas:
+                refs.extend(self._extract_refs(self.schemas[ref_name]))
         for key in ["allOf", "oneOf", "anyOf", "not", "properties", "items"]:
             if key in schema:
                 for sub_schema in (
@@ -225,11 +236,9 @@ class OpenAPIParser:
 
         if "$ref" in schema:
             ref_name = schema["$ref"].split("/")[-1]
-            if ref_name in self.components and ref_name not in self.visited_refs:
+            if ref_name in self.schemas and ref_name not in self.visited_refs:
                 self.visited_refs.add(ref_name)  # Mark as visited
-                nested_types.extend(
-                    self._resolve_nested_types(self.components[ref_name])
-                )
+                nested_types.extend(self._resolve_nested_types(self.schemas[ref_name]))
 
         for key in ["allOf", "oneOf", "anyOf", "not"]:
             if key in schema:
