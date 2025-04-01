@@ -4,7 +4,7 @@ Please learn more about Borea and our mission at [borea.dev](https://borea.dev) 
 
 This repository contains a Python HTTP client SDK generator. It generates a Python client from an OpenAPI specification.
 
-## Table of Contents
+## Table of contents
 
 -   [Getting Started](#getting-started)
 -   [Installation](#installation)
