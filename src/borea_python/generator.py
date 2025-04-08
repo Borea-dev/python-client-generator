@@ -15,7 +15,7 @@ from .models.handler_class_models import (
 )
 from .models.openapi_models import (
     OpenAPIMetadata,
-    Operation,
+    OpenAPIOperation,
     SchemaMetadata,
 )
 from .models.schema_model import SchemaPyJinja
@@ -65,7 +65,7 @@ class SDKGenerator:
 
     def _generate_handler_class(
         self,
-        operation: Operation,
+        operation: OpenAPIOperation,
         parent_class_name: str,
         parent_filename: str,
         is_operation_without_tag: bool,
@@ -214,7 +214,7 @@ class SDKGenerator:
             template_metadata=template_metadata,
         )
 
-    def _generate_tests(self, tag: str, operations: List[Operation]) -> str:
+    def _generate_tests(self, tag: str, operations: List[OpenAPIOperation]) -> str:
         """Generate tests for a specific tag"""
         template_metadata = {
             "tag": tag,
@@ -226,7 +226,9 @@ class SDKGenerator:
             "test_client.py.jinja", template_metadata=template_metadata
         )
 
-    def _generate_readme(self, operations_by_tag: Dict[str, List[Operation]]) -> str:
+    def _generate_readme(
+        self, operations_by_tag: Dict[str, List[OpenAPIOperation]]
+    ) -> str:
         """Generate README.md with SDK documentation"""
         template_metadata = {
             "metadata": self.metadata,

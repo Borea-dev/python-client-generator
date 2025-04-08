@@ -37,7 +37,7 @@ class SchemaMetadata(BaseModel):
         return len(self.nested_json_schemas)
 
 
-class Operation(BaseModel):
+class OpenAPIOperation(BaseModel):
     """Represents an OpenAPI operation"""
 
     tag: str
@@ -50,7 +50,7 @@ class Operation(BaseModel):
     request_body: Optional[SchemaMetadata] = None
 
 
-class Info(BaseModel):
+class OpenAPIInfo(BaseModel):
     """Represents the 'info' object in OpenAPI metadata"""
 
     title: str
@@ -61,7 +61,7 @@ class Info(BaseModel):
     license: Optional[Dict[str, Any]] = None
 
 
-class Server(BaseModel):
+class OpenAPIServer(BaseModel):
     """Represents a server in OpenAPI metadata"""
 
     url: str
@@ -74,7 +74,7 @@ class OpenAPITag(BaseModel):
     description: str = ""
 
 
-class Component(BaseModel):
+class OpenAPIComponent(BaseModel):
     """Represents a component in OpenAPI metadata"""
 
     schemas: Dict[str, Any] = Field(default_factory=dict)
@@ -86,9 +86,9 @@ class OpenAPIMetadata(BaseModel):
 
     openapi_input: str
     openapi: str
-    info: Info
-    servers: List[Server]
-    components: Component
+    info: OpenAPIInfo
+    servers: List[OpenAPIServer]
+    components: OpenAPIComponent
     tags: List[OpenAPITag]
-    operations: List[Operation]
+    operations: List[OpenAPIOperation]
     headers: List[HttpHeader]

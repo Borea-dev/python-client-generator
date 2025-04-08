@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import click
 
@@ -8,7 +8,8 @@ from .models.openapi_models import (
     HttpHeader,
     HttpParameter,
     OpenAPIMetadata,
-    Operation,
+    OpenAPIOperation,
+    OpenAPITag,
     SchemaMetadata,
 )
 
@@ -38,33 +39,21 @@ class OpenAPIParser:
         """
         Parse the OpenAPI spec and return a list of operations filtered by criteria.
         """
-        operations = []
-        http_params = []
-        for path, methods in self.paths.items():
-            for method, details in methods.items():
-                if "operationId" not in details:
-                    continue
-                if self.operation_id != "" and self.operation_id != details.get(
-                    "operationId", ""
-                ):
-                    continue
-                if self.tag != "" and self.tag not in details.get("tags", [""]):
-                    continue
-                operation = self._parse_operation(path, method, details)
-                for http_param in operation.parameters:
-                    self._add_unique_http_param(
-                        http_params, http_param.model_dump(by_alias=True)
-                    )
-                operations.append(operation)
+
+        (
+            operations,
+            tags_from_paths,
+            http_params,
+        ) = self._get_operations_tags_http_params_from_paths()
         headers = [
             HttpHeader(**http_param)
             for http_param in http_params
             if "header" in http_param["in"]
         ]
-        openapi = self.openapi_spec.get("openapi", "")
+        openapi: str = self.openapi_spec.get("openapi", "")
         info = self.openapi_spec.get("info", {})
         servers = self.openapi_spec.get("servers", [])
-        tags = self.openapi_spec.get("tags", [])
+        tags = self._merge_path_and_spec_tags(tags_from_paths)
         components = self.openapi_spec.get("components", {})
         return OpenAPIMetadata(
             openapi_input=self.openapi_input,
@@ -76,6 +65,44 @@ class OpenAPIParser:
             headers=headers,
             operations=operations,
         )
+
+    def _get_operations_tags_http_params_from_paths(
+        self,
+    ) -> Tuple[List[OpenAPIOperation], List[str], List[HttpParameter]]:
+        operations = []
+        tags = set()
+        http_params = []
+        for path, methods in self.paths.items():
+            for method, details in methods.items():
+                # if statements are for filtering parser for easier debugging
+                if "operationId" not in details:
+                    continue
+                if self.operation_id != "" and self.operation_id != details.get(
+                    "operationId", ""
+                ):
+                    continue
+                if self.tag != "" and self.tag not in details.get("tags", [""]):
+                    continue
+
+                operation: OpenAPIOperation = self._parse_operation(
+                    path, method, details
+                )
+                tags.add(operation.tag)
+                for http_param in operation.parameters:
+                    self._add_unique_http_param(
+                        http_params, http_param.model_dump(by_alias=True)
+                    )
+                operations.append(operation)
+        return operations, list(tags), http_params
+
+    def _merge_path_and_spec_tags(self, tags_from_paths: List[str]) -> List[OpenAPITag]:
+        """Merges tags found on the OpenAPI spec and tags found on each operation."""
+        openapi_spec_tags: List[OpenAPITag] = self.openapi_spec.get("tags", [])
+        spec_tag_names = [tag.name for tag in openapi_spec_tags]
+        for tag_name in tags_from_paths:
+            if tag_name not in spec_tag_names:
+                openapi_spec_tags.append(OpenAPITag(name=tag_name, description=""))
+        return openapi_spec_tags
 
     def _add_unique_http_param(
         self, headers_list: List[Dict[str, Any]], new_header: Dict[str, Any]
@@ -89,11 +116,11 @@ class OpenAPIParser:
 
     def _parse_operation(
         self, path: str, method: str, details: Dict[str, Any]
-    ) -> Operation:
+    ) -> OpenAPIOperation:
         """
         Extract relevant details for an API operation.
         """
-        return Operation(
+        return OpenAPIOperation(
             tag=details.get("tags", [""])[0],
             operation_id=details["operationId"],
             method=method.upper(),
