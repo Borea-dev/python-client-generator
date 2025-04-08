@@ -318,7 +318,7 @@ class SDKGenerator:
             tag_dir, tag_class_name, tag_filename = self._get_tag_formats(tag_name)
             is_operation_without_tag = tag_name == ""
             tag_dir_path = src_dir / tag_dir
-            handler_filename = operation_id
+            handler_filename = Helpers.clean_file_name(operation_id)
             handler_dir = handler_filename
             handler_file_dir_path = tag_dir_path / handler_dir
             self._create_directory(str(handler_file_dir_path))

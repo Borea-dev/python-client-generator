@@ -7,16 +7,20 @@ import click
 class Helpers:
     @classmethod
     def sanitize_string(cls, s: str) -> str:
-        # Replace common delimiters with underscore
+        """Replace dash, slash, period, comma, pipe, colon, semicolon, and space delimiters with underscore"""
         s = re.sub(r"[-/.,|:; ]", "_", s)
         # Remove all other special characters (keeping alphanumerics and underscores)
         s = re.sub(r"[^\w]", "", s)
         return s
 
     @classmethod
+    def sanitize_and_lower_string(cls, s: str) -> str:
+        return cls.sanitize_string(s).lower()
+
+    @classmethod
     def clean_lower(cls, tag: str) -> str:
         """Clean tag name to be a valid Python identifier"""
-        return cls.sanitize_string(tag).lower().replace(" ", "_").replace("-", "_")
+        return cls.sanitize_and_lower_string(tag)
 
     @classmethod
     def clean_capitalize(cls, name: str) -> str:
@@ -29,8 +33,7 @@ class Helpers:
     @classmethod
     def clean_parameter_name(cls, name: str) -> str:
         """Clean parameter name to be a valid Python identifier"""
-        # Convert hyphens to underscores
-        return cls.sanitize_string(name).replace("-", "_").replace(" ", "_").lower()
+        return cls.sanitize_and_lower_string(name)
 
     @classmethod
     def clean_type_name(cls, type_name: str) -> str:
@@ -50,25 +53,12 @@ class Helpers:
     @classmethod
     def clean_file_name(cls, name: str) -> str:
         """Clean name to be a valid file name"""
-        # Convert to snake case
-        name = name.replace("-", " ")
-        words = name.split()
-        return "_".join(word.lower() for word in words)
+        return cls.sanitize_and_lower_string(name)
 
     @classmethod
     def clean_schema_name(cls, name: str) -> str:
         """Clean name to be a valid Python identifier"""
-        return name.replace("-", "_").replace(" ", "_")
-
-    @classmethod
-    def replace_dashes_with_underscores(cls, name: str) -> str:
-        """Replace dashes with underscores"""
-        return name.replace("-", "_")
-
-    @classmethod
-    def replace_spaces_with_underscores(cls, name: str) -> str:
-        """Replace spaces with underscores"""
-        return name.replace(" ", "_")
+        return cls.sanitize_and_lower_string(name)
 
     @classmethod
     def format_description(cls, description: str) -> str:
