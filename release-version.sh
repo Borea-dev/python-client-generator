@@ -14,15 +14,10 @@ RELEASE_TYPE=""
 show_usage() {
     echo "Usage: $0 [OPTIONS] or $0 [TYPE] [--dry-run]"
     echo "Options:"
-    echo "  -n               Dry run mode (no changes will be made)"
-    echo "  -b               Breaking change (major version increment)"
-    echo "  -feat            Feature addition (minor version increment)"
-    echo "  -fix             Bug fix (patch version increment)"
-    echo "  --dry-run        Same as -n"
-    echo "Types (legacy format):"
-    echo "  breaking         Same as -b"
-    echo "  feature          Same as -feat"
-    echo "  fix              Same as -fix"
+    echo "  -n, --dry-run     Dry run mode (no changes will be made)"
+    echo "  -b, --breaking    Breaking change (major version increment)"
+    echo "  -feat, --feature  Feature addition (minor version increment)"
+    echo "  -fix, --fix       Bug fix (patch version increment)"
     exit 1
 }
 
@@ -38,7 +33,7 @@ while [ $# -gt 0 ]; do
             DRY_RUN=true
             shift
             ;;
-        -b|breaking)
+        -b|--breaking)
             if [ -n "$RELEASE_TYPE" ]; then
                 echo "Error: Only one release type can be specified"
                 show_usage
@@ -46,7 +41,7 @@ while [ $# -gt 0 ]; do
             RELEASE_TYPE="breaking"
             shift
             ;;
-        -feat|feature)
+        -feat|--feature)
             if [ -n "$RELEASE_TYPE" ]; then
                 echo "Error: Only one release type can be specified"
                 show_usage
@@ -54,7 +49,7 @@ while [ $# -gt 0 ]; do
             RELEASE_TYPE="feature"
             shift
             ;;
-        -fix|fix)
+        -fix|--fix)
             if [ -n "$RELEASE_TYPE" ]; then
                 echo "Error: Only one release type can be specified"
                 show_usage
