@@ -1,10 +1,10 @@
 import json
-import warnings
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
 import click
 
 from .content_loader import ContentLoader
+from .logger import Logger
 from .models.openapi_models import (
     HttpHeader,
     HttpParameter,
@@ -32,9 +32,19 @@ class OpenAPIParser:
         self.tag = tag
         self.operation_id = operation_id
         self.openapi_input = openapi_input
+
         self.visited_refs = (
             set()
         )  # Track visited references to prevent infinite recursion
+        self.json_schema_key_words = ["$ref"]  # , "allOf", "oneOf", "anyOf", "not"]
+        self.openapi_schema_groupings = [
+            "allOf",
+            "oneOf",
+            "anyOf",
+            "not",
+            "properties",
+            "items",
+        ]
 
     def parse(self) -> OpenAPIMetadata:
         """
@@ -71,13 +81,12 @@ class OpenAPIParser:
         self,
     ) -> Tuple[List[OpenAPIOperation], List[str], List[HttpParameter]]:
         operations = []
+        unique_operation_ids = set()
         tags = set()
         http_params = []
         for path, methods in self.paths.items():
             for method, details in methods.items():
                 # if statements are for filtering parser for easier debugging
-                if "operationId" not in details:
-                    continue
                 if self.operation_id != "" and self.operation_id != details.get(
                     "operationId", ""
                 ):
@@ -86,9 +95,10 @@ class OpenAPIParser:
                     continue
 
                 operation: OpenAPIOperation = self._parse_operation(
-                    path, method, details
+                    path, method, details, unique_operation_ids
                 )
-                tags.add(operation.tag)
+                if operation.tag != "":
+                    tags.add(operation.tag)
                 for http_param in operation.parameters:
                     self._add_unique_http_param(
                         http_params, http_param.model_dump(by_alias=True)
@@ -102,7 +112,7 @@ class OpenAPIParser:
         spec_tag_names: List[OpenAPITag] = []
         for tag in openapi_spec_tags:
             if "name" not in tag:
-                warnings.warn(f"Tag missing name: {tag}")
+                Logger.warn(f"Tag missing name: {tag}")
             else:
                 spec_tag_names.append(tag.get("name", ""))
         for tag_name in tags_from_paths:
@@ -121,21 +131,57 @@ class OpenAPIParser:
             headers_list.append(new_header)
 
     def _parse_operation(
-        self, path: str, method: str, details: Dict[str, Any]
+        self,
+        path: str,
+        method: str,
+        details: Dict[str, Any],
+        unique_operation_ids: Set[str],
     ) -> OpenAPIOperation:
         """
         Extract relevant details for an API operation.
         """
+        # get first tag, ignore the rest
+        tag = details.get("tags", [""])[0]
+        operation_id = self._parse_operation_id(
+            path, method, details, unique_operation_ids
+        )
+        method = method.upper()
+
         return OpenAPIOperation(
-            tag=details.get("tags", [""])[0],
-            operation_id=details["operationId"],
-            method=method.upper(),
+            tag=tag,
+            operation_id=operation_id,
+            method=method,
             path=path,
             summary=details.get("summary", ""),
             description=details.get("description", ""),
             parameters=self._parse_parameters(details.get("parameters", [])),
             request_body=self._parse_request_body(details.get("requestBody", {})),
         )
+
+    def _parse_operation_id(
+        self,
+        path: str,
+        method: str,
+        details: Dict[str, Any],
+        unique_operation_ids: Set[str],
+    ) -> str:
+        """
+        Extract the operationId from the details.
+        """
+        # Handle case where no operationId exists
+        operation_id = details.get("operationId", "")
+        if not operation_id:
+            Logger.warn(
+                f"No operationId found for {path} {method}. Using: {method}_{path}"
+            )
+            operation_id = f"{method}_{path}"
+        if operation_id in unique_operation_ids:
+            Logger.warn(
+                f"Duplicate operationId found: {operation_id}. Making unique by adding _duplicate"
+            )
+            operation_id = f"{operation_id}_duplicate"
+        unique_operation_ids.add(operation_id)
+        return operation_id
 
     def _resolve_param_ref(self, param: str) -> Dict[str, Any]:
         """
@@ -190,7 +236,9 @@ class OpenAPIParser:
         json_schema = content.get("application/json", {}).get("schema", {})
         return self._schema_metadata(json_schema)
 
-    def _schema_metadata(self, schema: Dict[str, Any]) -> SchemaMetadata:
+    def _schema_metadata(
+        self, schema: Dict[str, Any], count: int = 0
+    ) -> SchemaMetadata:
         """
         Extract relevant metadata from a given schema.
         """
@@ -198,7 +246,8 @@ class OpenAPIParser:
         nullable = schema.get("nullable")
         json_schema_type = self._resolve_type(schema)
         nested_json_schema_refs = self._extract_refs(schema)
-        nested_json_schemas = self._resolve_nested_types(schema)
+
+        nested_json_schemas = self._resolve_nested_types(schema, count=count + 1)
         type_is_schema = len(nested_json_schema_refs) > 0
 
         return SchemaMetadata(
@@ -240,15 +289,16 @@ class OpenAPIParser:
             refs.append(ref_name)
             if ref_name in self.schemas:
                 refs.extend(self._extract_refs(self.schemas[ref_name]))
-        for key in ["allOf", "oneOf", "anyOf", "not", "properties", "items"]:
-            if key in schema:
-                for sub_schema in (
-                    schema[key] if isinstance(schema[key], list) else [schema[key]]
-                ):
-                    refs.extend(self._extract_refs(sub_schema))
+            else:
+                Logger.warn(f"Schema {ref_name} not found in schemas")
+
+        self.loop_over_schema_groupings(schema, refs, self._extract_refs)
+
         return refs
 
-    def _resolve_nested_types(self, schema: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _resolve_nested_types(
+        self, schema: Dict[str, Any], count: int = 0
+    ) -> List[Dict[str, Any]]:
         """
         Recursively resolve nested types within a schema, including all properties and nested properties.
         Handles $ref, allOf, oneOf, anyOf, not, and properties within objects and arrays.
@@ -259,54 +309,121 @@ class OpenAPIParser:
         Returns:
             List of resolved nested type schemas
         """
+
         nested_types = []
         if not schema:  # Handle None or empty schema
             return nested_types
 
         if "type" in schema:
-            self._traverse_dict(schema)
-            nested_types.append(schema)
+            if schema["type"] in ["object", "array"]:
+                self._traverse_dict(schema, count=count + 1)
+                nested_types.append(schema)
+            else:
+                # type in schema is not object or array
+                Logger.warn(f"Schema has type {schema['type']}")
 
         if "$ref" in schema:
             ref_name = schema["$ref"].split("/")[-1]
-            if ref_name in self.schemas and ref_name not in self.visited_refs:
-                self.visited_refs.add(ref_name)  # Mark as visited
-                nested_types.extend(self._resolve_nested_types(self.schemas[ref_name]))
+            if ref_name in self.schemas:
+                if ref_name not in self.visited_refs:
+                    self.visited_refs.add(ref_name)  # Mark as visited
 
-        for key in ["allOf", "oneOf", "anyOf", "not"]:
-            if key in schema:
-                for sub_schema in (
-                    schema[key] if isinstance(schema[key], list) else [schema[key]]
-                ):
-                    nested_types.extend(self._resolve_nested_types(sub_schema))
+                    nested_types.extend(
+                        self._resolve_nested_types(
+                            self.schemas[ref_name], count=count + 1
+                        )
+                    )
+                else:
+                    Logger.warn(f"Schema {ref_name} has already been visited")
+            else:
+                Logger.warn(f"Schema {ref_name} not found in schemas")
+
+        self.loop_over_schema_groupings(
+            schema,
+            nested_types,
+            self._resolve_nested_types,
+        )
 
         return nested_types
+
+    def loop_over_schema_groupings(
+        self,
+        schema: Dict[str, Any],
+        refs: List[str],
+        schema_type_handler: Callable[[Dict[str, Any]], None],
+    ):
+        for key in self.openapi_schema_groupings:
+            if key in schema:
+                value_at_key = schema[key]
+                if isinstance(value_at_key, list):
+                    for sub_schema in value_at_key:
+                        refs.extend(schema_type_handler(sub_schema))
+                else:
+                    refs.extend(schema_type_handler(value_at_key))
 
     def _traverse_dict(
         self,
         d: Dict[str, Any],
-        key: Union[str, int] = None,
+        parent_key: Union[str, int] = None,
         parent: Union[Dict[str, Any], List[Any]] = None,
+        count: int = 0,
     ):
         """
         Traverses a dictionary, resolving any '$ref' values.
         :param d: The dictionary to traverse.
         :param resolve_ref: A function that resolves '$ref' values.
         """
-        for k, value in d.items():
-            if k in ["$ref", "allOf", "oneOf", "anyOf", "not"]:
-                schema_metadata = self._schema_metadata(d)
-                parent[key] = schema_metadata
+
+        for d_key, value in d.items():
+            if d_key in self.json_schema_key_words:
+                self._update_parent_schema_with_schema_metadata(
+                    d=d,
+                    d_key=d_key,
+                    parent_key=parent_key,
+                    parent=parent,
+                    count=count + 1,
+                )
+
             elif isinstance(value, dict):
-                self._traverse_dict(d=value, key=k, parent=d)
+                self._traverse_dict(
+                    d=value, parent_key=d_key, parent=d, count=count + 1
+                )
             elif isinstance(value, list):
-                self._traverse_array(arr=value, key=k, parent=d)
+                self._traverse_array(
+                    arr=value, parent_key=d_key, parent=d, count=count + 1
+                )
+
+    def _update_parent_schema_with_schema_metadata(
+        self,
+        d: Dict[str, Any],
+        d_key: Union[str, int],
+        parent_key: Union[str, int],
+        parent: Dict[str, Any],
+        count: int = 0,
+    ):
+        num_of_keys = len(d.keys())
+        schema: Dict[str, Any] = {}
+        schema_parent: Dict[str, Any] = parent
+
+        # If the dictionary has more than one key, we need to create a new dictionary with ONLY the key
+        if num_of_keys > 1:
+            # schema_parent = d
+            schema[d_key] = d[d_key]
+
+        else:
+            # schema_parent = parent
+            schema = d
+
+        schema_metadata = self._schema_metadata(schema, count=count + 1)
+
+        schema_parent[parent_key] = schema_metadata
 
     def _traverse_array(
         self,
         arr: List[Any],
-        key: Union[str, int] = None,
+        parent_key: Union[str, int] = None,
         parent: Union[Dict[str, Any], List[Any]] = None,
+        count: int = 0,
     ):
         """
         Traverses an array (list), resolving any '$ref' values inside the array.
@@ -315,9 +432,11 @@ class OpenAPIParser:
         """
         for i, item in enumerate(arr):
             if isinstance(item, dict):
-                self._traverse_dict(d=item, key=i, parent=arr)
+                self._traverse_dict(d=item, parent_key=i, parent=arr, count=count + 1)
             elif isinstance(item, list):
-                self._traverse_array(arr=item, key=i, parent=arr)
+                self._traverse_array(
+                    arr=item, parent_key=i, parent=arr, count=count + 1
+                )
 
 
 @click.command()
