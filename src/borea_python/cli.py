@@ -51,7 +51,7 @@ def init() -> None:
     with open(config_path, "w") as f:
         json.dump(default_config, f, indent=2)
 
-    click.echo(f"Created borea.config.json with default settings.")
+    click.echo("Created borea.config.json with default settings.")
 
 
 @cli.command(name="generate")
