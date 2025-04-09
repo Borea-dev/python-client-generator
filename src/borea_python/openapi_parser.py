@@ -315,12 +315,8 @@ class OpenAPIParser:
             return nested_types
 
         if "type" in schema:
-            if schema["type"] in ["object", "array"]:
-                self._traverse_dict(schema, count=count + 1)
-                nested_types.append(schema)
-            else:
-                # type in schema is not object or array
-                Logger.warn(f"Schema has type {schema['type']}")
+            self._traverse_dict(schema, count=count + 1)
+            nested_types.append(schema)
 
         if "$ref" in schema:
             ref_name = schema["$ref"].split("/")[-1]
@@ -334,7 +330,8 @@ class OpenAPIParser:
                         )
                     )
                 else:
-                    Logger.warn(f"Schema {ref_name} has already been visited")
+                    # Logger.warn(f"Schema {ref_name} has already been visited")
+                    pass
             else:
                 Logger.warn(f"Schema {ref_name} not found in schemas")
 
