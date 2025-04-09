@@ -1,8 +1,7 @@
 from typing import List, Optional
 
-import click
-
 from .content_loader import ContentLoader, ContentLoadError
+from .logger import Logger
 from .models.borea_config_models import (
     BoreaConfig,
     BoreaConfigJSON,
@@ -109,7 +108,7 @@ class ConfigParser:
     @staticmethod
     def log_warning_default_config_not_found() -> None:
         """Log a warning message when the default config is not found."""
-        click.echo(
+        Logger.warn(
             "Warning: No borea.config.json found. Command line arguments or defaults will be used."
         )
 
