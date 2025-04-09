@@ -7,10 +7,9 @@ import click
 class Helpers:
     @classmethod
     def sanitize_string(cls, s: str) -> str:
-        """Replace dash, slash, period, comma, pipe, colon, semicolon, and space delimiters with underscore"""
-        s = re.sub(r"[-/.,|:; ]", "_", s)
-        # Remove all other special characters (keeping alphanumerics and underscores)
-        s = re.sub(r"[^\w]", "", s)
+        """Replace all non-alphanumeric characters with underscores"""
+        s = re.sub(r"[\W]", "_", s)
+        s = re.sub(r"_+", "_", s)
         return s
 
     @classmethod
