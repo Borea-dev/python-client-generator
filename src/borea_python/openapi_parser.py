@@ -1,4 +1,5 @@
 import json
+import warnings
 from typing import Any, Dict, List, Tuple, Union
 
 import click
@@ -98,7 +99,12 @@ class OpenAPIParser:
     def _merge_path_and_spec_tags(self, tags_from_paths: List[str]) -> List[OpenAPITag]:
         """Merges tags found on the OpenAPI spec and tags found on each operation."""
         openapi_spec_tags: List[OpenAPITag] = self.openapi_spec.get("tags", [])
-        spec_tag_names = [tag.name for tag in openapi_spec_tags]
+        spec_tag_names: List[OpenAPITag] = []
+        for tag in openapi_spec_tags:
+            if "name" not in tag:
+                warnings.warn(f"Tag missing name: {tag}")
+            else:
+                spec_tag_names.append(tag.get("name", ""))
         for tag_name in tags_from_paths:
             if tag_name not in spec_tag_names:
                 openapi_spec_tags.append(OpenAPITag(name=tag_name, description=""))
